@@ -1,0 +1,11 @@
+{
+  "$schema": "https://github.com/microsoft/vcpkg-tool/blob/3bc494764599acf9e431accdae1ac00a4dd0faa1/docs/vcpkg.schema.json",
+  "name": "sdl3-example",
+  "description": "Sample code for the Utah C++ Programmers video Modern GPU Programming with SDL3",
+  "version-semver": "1.0.0",
+  "dependencies": [
+    "gtest",
+    "sdl3",
+    "wxwidgets"
+  ]
+}
