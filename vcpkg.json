@@ -6,7 +6,13 @@
   "builtin-baseline": "cd61e1e26a038e82d6550a3ebbe0fbbfe7da78e3",
   "dependencies": [
     "gtest",
-    "sdl3",
+    {
+      "name": "sdl3",
+      "features": [
+        "vulkan"
+      ]
+    },
+    "sdl3-shadercross",
     {
       "name": "wxwidgets",
       "default-features": false,
