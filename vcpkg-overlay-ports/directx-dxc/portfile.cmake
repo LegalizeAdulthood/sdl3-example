@@ -17,6 +17,8 @@ if(VCPKG_TARGET_IS_OSX)
         OUT_SOURCE_PATH SOURCE_PATH
         URL https://github.com/microsoft/DirectXShaderCompiler.git
         REF ${DIRECTX_DXC_REF}
+        PATCHES
+            fix-libcxx-no-specializations.patch
     )
 
     vcpkg_from_git(
