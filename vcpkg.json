@@ -6,6 +6,12 @@
   "dependencies": [
     "gtest",
     "sdl3",
-    "wxwidgets"
+    {
+      "name": "wxwidgets",
+      "default-features": false,
+      "features": [
+        "debug-support"
+      ]
+    }
   ]
 }
