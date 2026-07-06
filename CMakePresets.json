@@ -17,7 +17,7 @@
       "hidden": true,
       "description": "Set the project name from the preset name",
       "cacheVariables": {
-        "PROJECT_TEMPLATE_PROJECT_NAME": "Project Template ${presetName}"
+        "SDL3_EXAMPLE_PROJECT_NAME": "SDL3 Example ${presetName}"
       }
     },
     {
