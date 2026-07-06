@@ -78,13 +78,20 @@ if(VCPKG_TARGET_IS_OSX)
     file(MAKE_DIRECTORY
         "${CURRENT_PACKAGES_DIR}/tools/${PORT}"
         "${CURRENT_PACKAGES_DIR}/tools/lib")
-    file(INSTALL
+    get_filename_component(DIRECTX_DXC_TOOL_SOURCE
         "${CURRENT_PACKAGES_DIR}/bin/dxc"
+        REALPATH)
+    file(INSTALL
+        "${DIRECTX_DXC_TOOL_SOURCE}"
         DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}"
+        RENAME dxc
         FILE_PERMISSIONS
             OWNER_READ OWNER_WRITE OWNER_EXECUTE
             GROUP_READ GROUP_EXECUTE
             WORLD_READ WORLD_EXECUTE)
+    if(NOT EXISTS "${CURRENT_PACKAGES_DIR}/tools/${PORT}/dxc")
+        message(FATAL_ERROR "Could not install the DXC tool.")
+    endif()
     file(GLOB DXC_RUNTIME_LIBS
         "${CURRENT_PACKAGES_DIR}/lib/libdxcompiler*.dylib"
         "${CURRENT_PACKAGES_DIR}/lib/libdxil*.dylib")
