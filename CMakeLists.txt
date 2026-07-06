@@ -39,4 +39,9 @@ misc_group_sources("Git" FILES
 misc_group_sources("GitHub" FILES
     ".github/workflows/cmake.yml")
 misc_group_sources("VcPkg" FILES
+    "vcpkg-overlay-ports/sdl3-shadercross/fix-directx-shader-compiler-includes.patch"
+    "vcpkg-overlay-ports/sdl3-shadercross/portfile.cmake"
+    "vcpkg-overlay-ports/sdl3-shadercross/usage"
+    "vcpkg-overlay-ports/sdl3-shadercross/vcpkg.json"
+    "vcpkg-configuration.json"
     "vcpkg.json")
