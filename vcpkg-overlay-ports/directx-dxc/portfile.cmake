@@ -70,7 +70,26 @@ if(VCPKG_TARGET_IS_OSX)
     vcpkg_cmake_build(TARGET dxildll)
 
     file(GLOB DXIL_LIBS "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/lib/libdxil*.dylib")
+    if(NOT DXIL_LIBS)
+        message(FATAL_ERROR "Could not find the built DXIL library.")
+    endif()
     file(INSTALL ${DXIL_LIBS} DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+
+    file(MAKE_DIRECTORY
+        "${CURRENT_PACKAGES_DIR}/tools/${PORT}"
+        "${CURRENT_PACKAGES_DIR}/tools/lib")
+    file(INSTALL
+        "${CURRENT_PACKAGES_DIR}/bin/dxc"
+        DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}"
+        FILE_PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE)
+    file(GLOB DXC_RUNTIME_LIBS
+        "${CURRENT_PACKAGES_DIR}/lib/libdxcompiler*.dylib"
+        "${CURRENT_PACKAGES_DIR}/lib/libdxil*.dylib")
+    file(INSTALL ${DXC_RUNTIME_LIBS} DESTINATION "${CURRENT_PACKAGES_DIR}/tools/lib")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin")
 
     file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/include/${PORT}")
     file(INSTALL
