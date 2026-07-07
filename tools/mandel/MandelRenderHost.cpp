@@ -7,8 +7,10 @@
 
 #include <wx/brush.h>
 #include <wx/dcclient.h>
+#include <wx/event.h>
 #include <wx/image.h>
 
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <stdexcept>
@@ -20,27 +22,11 @@ namespace mandel
 namespace
 {
 
-core::MandelParams make_params(int width, int height)
+constexpr double zoom_scale_per_wheel_click = 0.8;
+
+wxWindow *event_window(wxEvent &event)
 {
-    constexpr double view_width = 4.0;
-    constexpr double center_x = -0.5;
-    constexpr double center_y = 0.0;
-
-    const double view_height = view_width * static_cast<double>(height) / static_cast<double>(width);
-
-    return core::MandelParams{
-        center_x - view_width / 2.0, center_y - view_height / 2.0, view_width / static_cast<double>(width),
-        view_height / static_cast<double>(height),
-        0.0,    // z0_real
-        0.0,    // z0_imag
-        4.0,    // bailout
-        1.0e-7, // close_enough
-        width, height,
-        1000, // max_iterations
-        15,   // first_saved_and
-        10,   // periodicity_next_saved_incr
-        1     // periodicity_check
-    };
+    return dynamic_cast<wxWindow *>(event.GetEventObject());
 }
 
 core::MandelPalette load_chroma_palette()
@@ -99,6 +85,8 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_frame.Bind(wxEVT_SIZE, &MandelRenderHost::OnFrameSize, this);
     m_cpuDisplay.Bind(wxEVT_PAINT, &MandelRenderHost::OnCpuPaint, this);
     m_canvas.Bind(wxEVT_PAINT, &MandelRenderHost::OnCanvasPaint, this);
+    BindMouseEvents(m_cpuDisplay);
+    BindMouseEvents(m_canvas);
     m_frame.Bind(wxEVT_TIMER, &MandelRenderHost::OnTimer, this, m_timer.GetId());
     LayoutDisplays();
     SelectCpuPresentation();
@@ -107,21 +95,55 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
 
 MandelRenderHost::~MandelRenderHost()
 {
+    ReleaseMouse();
     m_timer.Stop();
     m_frame.Unbind(wxEVT_TIMER, &MandelRenderHost::OnTimer, this, m_timer.GetId());
+    UnbindMouseEvents(m_canvas);
+    UnbindMouseEvents(m_cpuDisplay);
     m_canvas.Unbind(wxEVT_PAINT, &MandelRenderHost::OnCanvasPaint, this);
     m_cpuDisplay.Unbind(wxEVT_PAINT, &MandelRenderHost::OnCpuPaint, this);
     m_frame.Unbind(wxEVT_SIZE, &MandelRenderHost::OnFrameSize, this);
 }
 
+void MandelRenderHost::BindMouseEvents(wxWindow &window)
+{
+    window.Bind(wxEVT_LEFT_DOWN, &MandelRenderHost::OnMouseLeftDown, this);
+    window.Bind(wxEVT_LEFT_UP, &MandelRenderHost::OnMouseLeftUp, this);
+    window.Bind(wxEVT_MOTION, &MandelRenderHost::OnMouseMove, this);
+    window.Bind(wxEVT_MOUSEWHEEL, &MandelRenderHost::OnMouseWheel, this);
+    window.Bind(wxEVT_MOUSE_CAPTURE_LOST, &MandelRenderHost::OnMouseCaptureLost, this);
+}
+
+wxSize MandelRenderHost::DisplaySize() const
+{
+    return m_frame.GetClientSize();
+}
+
+void MandelRenderHost::InvalidateRender()
+{
+    m_cpuDirty = true;
+    RefreshActiveDisplay();
+}
+
+void MandelRenderHost::RefreshActiveDisplay()
+{
+    if (m_presentation == Presentation::Cpu)
+    {
+        m_cpuDisplay.Refresh(false);
+    }
+    else
+    {
+        m_canvas.Refresh(false);
+    }
+}
+
 void MandelRenderHost::LayoutDisplays()
 {
-    const wxSize size = m_frame.GetClientSize();
+    const wxSize size = DisplaySize();
     m_cpuDisplay.SetSize(0, 0, size.GetWidth(), size.GetHeight());
     m_canvas.SetSize(0, 0, size.GetWidth(), size.GetHeight());
     ApplyPresentationVisibility();
-    m_cpuDirty = true;
-    m_cpuDisplay.Refresh(false);
+    InvalidateRender();
 }
 
 void MandelRenderHost::ApplyPresentationVisibility()
@@ -136,6 +158,15 @@ void MandelRenderHost::ApplyPresentationVisibility()
         m_cpuDisplay.Hide();
         m_canvas.Show();
     }
+}
+
+void MandelRenderHost::ReleaseMouse()
+{
+    if (m_mouseCapture != nullptr && m_mouseCapture->HasCapture())
+    {
+        m_mouseCapture->ReleaseMouse();
+    }
+    m_mouseCapture = nullptr;
 }
 
 void MandelRenderHost::RenderCpuImage()
@@ -153,25 +184,34 @@ void MandelRenderHost::RenderCpuImage()
         return;
     }
 
-    const auto params = make_params(size.GetWidth(), size.GetHeight());
+    const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
     const auto iterations = core::render_mandel_cpu(params);
     const auto image = core::map_mandel_colors(iterations, params.max_iterations, m_palette);
     m_cpuBitmap = make_bitmap(image);
     m_cpuDirty = false;
 }
 
+void MandelRenderHost::UnbindMouseEvents(wxWindow &window)
+{
+    window.Unbind(wxEVT_MOUSE_CAPTURE_LOST, &MandelRenderHost::OnMouseCaptureLost, this);
+    window.Unbind(wxEVT_MOUSEWHEEL, &MandelRenderHost::OnMouseWheel, this);
+    window.Unbind(wxEVT_MOTION, &MandelRenderHost::OnMouseMove, this);
+    window.Unbind(wxEVT_LEFT_UP, &MandelRenderHost::OnMouseLeftUp, this);
+    window.Unbind(wxEVT_LEFT_DOWN, &MandelRenderHost::OnMouseLeftDown, this);
+}
+
 void MandelRenderHost::SelectCpuPresentation()
 {
     m_presentation = Presentation::Cpu;
     ApplyPresentationVisibility();
-    m_cpuDisplay.Refresh(false);
+    RefreshActiveDisplay();
 }
 
 void MandelRenderHost::SelectGpuPresentation()
 {
     m_presentation = Presentation::Gpu;
     ApplyPresentationVisibility();
-    m_canvas.Refresh(false);
+    RefreshActiveDisplay();
 }
 
 void MandelRenderHost::OnCanvasPaint(wxPaintEvent &)
@@ -197,16 +237,72 @@ void MandelRenderHost::OnFrameSize(wxSizeEvent &event)
     event.Skip();
 }
 
+void MandelRenderHost::OnMouseCaptureLost(wxMouseCaptureLostEvent &)
+{
+    m_mouseCapture = nullptr;
+}
+
+void MandelRenderHost::OnMouseLeftDown(wxMouseEvent &event)
+{
+    auto *window = event_window(event);
+    if (window == nullptr)
+    {
+        return;
+    }
+
+    m_mouseCapture = window;
+    m_lastMousePosition = event.GetPosition();
+    if (!window->HasCapture())
+    {
+        window->CaptureMouse();
+    }
+}
+
+void MandelRenderHost::OnMouseLeftUp(wxMouseEvent &)
+{
+    ReleaseMouse();
+}
+
+void MandelRenderHost::OnMouseMove(wxMouseEvent &event)
+{
+    if (m_mouseCapture == nullptr || !event.LeftIsDown())
+    {
+        return;
+    }
+
+    const wxPoint position = event.GetPosition();
+    const int delta_x = position.x - m_lastMousePosition.x;
+    const int delta_y = position.y - m_lastMousePosition.y;
+    if (delta_x == 0 && delta_y == 0)
+    {
+        return;
+    }
+
+    const wxSize size = DisplaySize();
+    m_viewport.pan_pixels(delta_x, delta_y, size.GetWidth(), size.GetHeight());
+    m_lastMousePosition = position;
+    InvalidateRender();
+}
+
+void MandelRenderHost::OnMouseWheel(wxMouseEvent &event)
+{
+    if (event.GetWheelDelta() == 0 || event.GetWheelRotation() == 0)
+    {
+        return;
+    }
+
+    const double clicks = static_cast<double>(event.GetWheelRotation()) / static_cast<double>(event.GetWheelDelta());
+    const double scale = std::pow(zoom_scale_per_wheel_click, clicks);
+    const wxPoint position = event.GetPosition();
+    const wxSize size = DisplaySize();
+
+    m_viewport.zoom_at(scale, position.x, position.y, size.GetWidth(), size.GetHeight());
+    InvalidateRender();
+}
+
 void MandelRenderHost::OnTimer(wxTimerEvent &)
 {
-    if (m_presentation == Presentation::Cpu)
-    {
-        m_cpuDisplay.Refresh(false);
-    }
-    else
-    {
-        m_canvas.Refresh(false);
-    }
+    RefreshActiveDisplay();
 }
 
 } // namespace mandel
