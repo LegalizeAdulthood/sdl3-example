@@ -17,7 +17,11 @@ configure_file(assets.h.in assets.h @ONLY)
 set_source_files_properties(
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.frag.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.vert.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
     PROPERTIES HEADER_FILE_ONLY ON)
+source_group(
+    "Shader Files"
+    REGULAR_EXPRESSION "\\.hlsl$")
 
 function(add_mandel_shader_assets output_var shader_source shader_name shader_stage)
     set(shader_outputs)
@@ -56,18 +60,25 @@ add_mandel_shader_assets(
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.frag.hlsl"
     blit.frag
     fragment)
+add_mandel_shader_assets(
+    mandel_compute_shader_assets
+    "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
+    mandel.comp
+    compute)
 
 add_custom_target(
     mandel-shaders
     DEPENDS
         ${blit_vertex_shader_assets}
-        ${blit_fragment_shader_assets})
+        ${blit_fragment_shader_assets}
+        ${mandel_compute_shader_assets})
 target_folder(mandel-shaders "Tools")
 
 add_executable(mandel
     "${CMAKE_CURRENT_BINARY_DIR}/assets.h"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.frag.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.vert.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
     MandelRenderHost.cpp
     MandelRenderHost.h
     assets.h.in

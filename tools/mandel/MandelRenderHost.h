@@ -3,9 +3,12 @@
 #include <core/MandelImage.h>
 #include <core/MandelViewport.h>
 
+#include <sdlcpp/GpuBuffer.h>
+#include <sdlcpp/GpuComputePipeline.h>
 #include <sdlcpp/GpuDevice.h>
 #include <sdlcpp/GpuGraphicsPipeline.h>
 #include <sdlcpp/GpuShader.h>
+#include <sdlcpp/GpuTexture.h>
 #include <sdlcpp/GpuWindowClaim.h>
 #include <wxsdl/SdlCanvas.h>
 
@@ -37,7 +40,9 @@ private:
     void BindMouseEvents(wxWindow &window);
     [[nodiscard]] wxSize DisplaySize() const;
     void InvalidateRender();
+    void EnsureGpuTexture(const wxSize &size);
     void LayoutDisplays();
+    void RenderGpuImage(SDL_GPUCommandBuffer *command_buffer, const wxSize &size);
     void RefreshActiveDisplay();
     void RenderGpuFrame();
     void RenderCpuImage();
@@ -63,14 +68,19 @@ private:
     Presentation m_presentation = Presentation::Cpu;
     sdlcpp::GpuDevice m_gpuDevice;
     sdlcpp::GpuWindowClaim m_gpuWindow;
+    sdlcpp::GpuComputePipeline m_mandelComputePipeline;
     sdlcpp::GpuShader m_blitVertexShader;
     sdlcpp::GpuShader m_blitFragmentShader;
     sdlcpp::GpuGraphicsPipeline m_blitPipeline;
+    sdlcpp::GpuBuffer m_paletteBuffer;
+    sdlcpp::GpuTexture m_iterationTexture;
+    wxSize m_gpuTextureSize;
     wxWindow *m_mouseCapture = nullptr;
     wxPoint m_lastMousePosition;
     wxTimer m_timer;
     wxBitmap m_cpuBitmap;
     bool m_cpuDirty = true;
+    bool m_gpuDirty = true;
 };
 
 } // namespace mandel

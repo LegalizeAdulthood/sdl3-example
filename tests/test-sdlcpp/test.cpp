@@ -1,6 +1,12 @@
+#include <sdlcpp/GpuBuffer.h>
 #include <sdlcpp/GpuCommandBuffer.h>
+#include <sdlcpp/GpuComputePipeline.h>
+#include <sdlcpp/GpuCopyPass.h>
 #include <sdlcpp/GpuDevice.h>
+#include <sdlcpp/GpuGraphicsPipeline.h>
+#include <sdlcpp/GpuShader.h>
 #include <sdlcpp/GpuTexture.h>
+#include <sdlcpp/GpuTransferBuffer.h>
 #include <sdlcpp/GpuWindowClaim.h>
 #include <sdlcpp/Properties.h>
 #include <sdlcpp/Window.h>
@@ -49,9 +55,33 @@ public:
         {
             return "GpuTexture";
         }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuBuffer>)
+        {
+            return "GpuBuffer";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuTransferBuffer>)
+        {
+            return "GpuTransferBuffer";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuShader>)
+        {
+            return "GpuShader";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuGraphicsPipeline>)
+        {
+            return "GpuGraphicsPipeline";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuComputePipeline>)
+        {
+            return "GpuComputePipeline";
+        }
         else if constexpr (std::is_same_v<T, sdlcpp::GpuCommandBuffer>)
         {
             return "GpuCommandBuffer";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuCopyPass>)
+        {
+            return "GpuCopyPass";
         }
         else if constexpr (std::is_same_v<T, sdlcpp::GpuDevice>)
         {
@@ -65,8 +95,9 @@ public:
     }
 };
 
-using SdlHandleTypes = ::testing::Types<sdlcpp::Window, sdlcpp::Properties, sdlcpp::GpuTexture,
-    sdlcpp::GpuCommandBuffer, sdlcpp::GpuDevice, sdlcpp::GpuWindowClaim>;
+using SdlHandleTypes = ::testing::Types<sdlcpp::Window, sdlcpp::Properties, sdlcpp::GpuTexture, sdlcpp::GpuBuffer,
+    sdlcpp::GpuTransferBuffer, sdlcpp::GpuShader, sdlcpp::GpuGraphicsPipeline, sdlcpp::GpuComputePipeline,
+    sdlcpp::GpuCommandBuffer, sdlcpp::GpuCopyPass, sdlcpp::GpuDevice, sdlcpp::GpuWindowClaim>;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(SdlHandles, SdlHandleTest, SdlHandleTypes, SdlHandleNames);
 
