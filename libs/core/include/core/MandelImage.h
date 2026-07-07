@@ -3,6 +3,7 @@
 #include <core/MandelIterationBuffer.h>
 
 #include <cstdint>
+#include <iosfwd>
 #include <vector>
 
 namespace core
@@ -23,7 +24,15 @@ struct MandelImage
     std::vector<Rgba8> pixels;
 };
 
+struct MandelPalette
+{
+    std::vector<Rgba8> colors;
+};
+
+MandelPalette read_mandel_palette(std::istream &input);
 Rgba8 mandel_color(int iteration, int max_iterations);
+Rgba8 mandel_color(int iteration, int max_iterations, const MandelPalette &palette);
 MandelImage map_mandel_colors(const MandelIterationBuffer &buffer, int max_iterations);
+MandelImage map_mandel_colors(const MandelIterationBuffer &buffer, int max_iterations, const MandelPalette &palette);
 
 } // namespace core

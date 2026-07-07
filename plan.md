@@ -30,10 +30,10 @@ The repository now has the foundation targets needed for the demo:
   iteration buffer, and CPU color-mapped image buffer.
 * `wxsdl` owns `wxsdl::SdlCanvas`, a `wxWindow` that attaches an SDL
   window to the native wx widget on Win32, Cocoa, and GTK/X11.
-* `mandel` is a wxWidgets GUI executable.  Its main frame creates and
-  lays out an `SdlCanvas`.
-* `mandel` owns a small render host that binds the canvas paint, size,
-  and timer events.
+* `mandel` is a wxWidgets GUI executable.  Its main frame creates a
+  plain CPU display `wxWindow` and an `SdlCanvas`.
+* `mandel` owns a small render host that draws CPU Mandelbrot output into
+  the CPU display window and keeps CPU presentation selected by default.
 * Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
   contract, CPU Mandelbrot behavior, CPU iteration buffers, and CPU
   color mapping.
@@ -228,9 +228,9 @@ target_folder(mandel "Tools")
 ```
 
 The current tool is the wx application shell and render host.  Add a
-plain wx window for CPU presentation before adding the GPU render path.
-Add shader targets when the GPU render path is introduced.  Keep SDL
-window access through `wxsdl::SdlCanvas::window()`.
+menu switch before adding the GPU render path.  Add shader targets when
+the GPU render path is introduced.  Keep SDL window access through
+`wxsdl::SdlCanvas::window()`.
 
 ## Presentation model
 
@@ -259,8 +259,8 @@ swapchain as the CPU display path.
 
 ## CPU frame flow
 
-The initial visible path should be CPU-rendered.  The wx event loop
-drives the CPU display window.
+The initial visible path is CPU-rendered.  The wx event loop drives the
+CPU display window.
 
 ```text
 wx dispatches paint, size, timer, and mouse events
@@ -473,15 +473,7 @@ fractal application UI.
 
 ## Implementation Slices
 
-### 1. wx CPU presentation
-
-* Add a plain wx window for CPU display.
-* Copy the color-mapped CPU image into a `wxImage` or `wxBitmap`.
-* Paint the CPU image in the CPU display window.
-* Recompute CPU output on resize.
-* Select CPU presentation by default.
-
-### 2. CPU/GPU presentation switch
+### 1. CPU/GPU presentation switch
 
 * Add a menu item that switches between CPU and GPU results.
 * Keep the CPU wx window and GPU `SdlCanvas` in the same frame.
@@ -489,34 +481,34 @@ fractal application UI.
 * Bring the CPU window to the top for CPU presentation.
 * Bring the GPU `SdlCanvas` to the top for GPU presentation.
 
-### 3. Mouse interaction
+### 2. Mouse interaction
 
 * Add mouse drag panning.
 * Add mouse wheel zoom.
 * Recompute CPU parameters and image after mouse interaction.
 
-### 4. SDL3 GPU device
+### 3. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 5. Fullscreen triangle
+### 4. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 6. Compute output texture
+### 5. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 7. CPU/GPU comparison, optional
+### 6. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.

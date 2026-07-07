@@ -1,0 +1,10 @@
+#pragma once
+
+#include <string_view>
+
+namespace mandel
+{
+
+inline constexpr std::string_view assets_dir = "@MANDEL_ASSETS_DIR@";
+
+} // namespace mandel

@@ -9,7 +9,7 @@
 #include <wx/app.h>
 #include <wx/frame.h>
 #include <wx/menu.h>
-#include <wx/sizer.h>
+#include <wx/window.h>
 
 #include <memory>
 
@@ -22,6 +22,7 @@ public:
     MandelFrame();
 
 private:
+    wxWindow *m_cpuDisplay{};
     wxsdl::SdlCanvas *m_canvas{};
     std::unique_ptr<mandel::MandelRenderHost> m_renderHost;
 };
@@ -61,13 +62,10 @@ MandelFrame::MandelFrame() :
     wxFrameBase::SetMenuBar(menuBar);
     Bind(wxEVT_MENU, [this](wxCommandEvent &) { Close(true); }, wxID_EXIT);
 
-    auto *sizer = new wxBoxSizer(wxVERTICAL);
+    m_cpuDisplay =
+        new wxWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxFULL_REPAINT_ON_RESIZE);
     m_canvas = new wxsdl::SdlCanvas(this);
-    m_renderHost = std::make_unique<mandel::MandelRenderHost>(*m_canvas);
-
-    sizer->Add(m_canvas, 1, wxEXPAND);
-    SetSizer(sizer);
-    wxTopLevelWindowBase::Layout();
+    m_renderHost = std::make_unique<mandel::MandelRenderHost>(*this, *m_cpuDisplay, *m_canvas);
 }
 
 bool MandelApp::OnInit()
