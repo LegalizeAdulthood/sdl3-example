@@ -15,7 +15,7 @@ public:
         wxWindowID id = wxID_ANY,
         const wxPoint &pos = wxDefaultPosition,
         const wxSize &size = wxDefaultSize,
-        long style = wxBORDER_NONE | wxWANTS_CHARS | wxFULL_REPAINT_ON_RESIZE);
+        long style = wxBORDER_NONE | wxFULL_REPAINT_ON_RESIZE);
     ~SdlCanvas() override;
 
     SdlCanvas(const SdlCanvas &) = delete;

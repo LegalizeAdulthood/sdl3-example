@@ -5,32 +5,73 @@ demonstration.  Build a clean standalone sample repository.
 
 ## Goal
 
-Build a small C++17 sample program that demonstrates SDL3 GPU API by:
+Build a small C++17 wxWidgets sample program that demonstrates SDL3 GPU
+API by:
 
-1. creating an SDL3 window,
-2. creating an SDL GPU device,
-3. dispatching a compute shader,
-4. writing Mandelbrot iteration counts into a GPU texture,
-5. displaying that texture through a simple graphics pipeline,
-6. toggling periodicity checking at runtime.
+1. opening a wxWidgets frame,
+2. embedding an SDL-backed `wxsdl::SdlCanvas`,
+3. creating an SDL GPU device,
+4. dispatching a compute shader,
+5. writing Mandelbrot iteration counts into a GPU texture,
+6. displaying that texture through a simple graphics pipeline,
+7. controlling the Mandelbrot view with wx mouse events.
 
 The code should remain small enough to explain in one meeting.
 
-## Library target
+## Current progress
 
-`libs/CMakeLists.txt`:
+The repository now has the foundation targets needed for the demo:
+
+* `sdlcpp` owns small RAII wrappers around SDL handles and SDL GPU
+  handles.
+* `wxsdl` owns `wxsdl::SdlCanvas`, a `wxWindow` that attaches an SDL
+  window to the native wx widget on Win32, Cocoa, and GTK/X11.
+* `mandel` is a wxWidgets GUI executable.  Its main frame creates and
+  lays out an `SdlCanvas`.
+* Unit tests cover the move-only wrapper shape and the `SdlCanvas`
+  inheritance contract.
+
+Future Mandelbrot code should build on this structure.  Do not go back to
+a raw SDL-only application unless the wx host is deliberately removed.
+
+## Existing support targets
+
+The current low-level targets are:
 
 ```cmake
-add_library(mandel STATIC
-    include/mandel/MandelParams.h
-    include/mandel/MandelReference.h
-    include/mandel/Palette.h
+add_subdirectory(core)
+add_subdirectory(sdlcpp)
+add_subdirectory(wxsdl)
+```
+
+`sdlcpp` is the SDL C API wrapper layer.  It already provides wrappers for
+the SDL library lifetime, properties, windows, GPU devices, command
+buffers, textures, buffers, shaders, samplers, pipelines, passes, fences,
+transfer buffers, swapchain textures, and GPU window claims.
+
+`core` is the domain layer.  Keep Mandelbrot parameters, viewport mapping,
+iteration/color data, CPU reference code, and render input/output types
+there.
+
+`wxsdl` is the wx/SDL bridge.  Its public surface is currently
+`wxsdl::SdlCanvas`, which exposes the attached `sdlcpp::Window`.
+
+## Core Mandelbrot code
+
+Add Mandelbrot code to the existing `core` target.  Do not create a
+separate Mandelbrot library target.  Drop the stub `core.cpp` and
+`core.h` files when the new code is added.
+
+`libs/core/CMakeLists.txt`:
+
+```cmake
+add_library(core
+    include/core/MandelParams.h
+    include/core/MandelReference.h
+    include/core/Palette.h
     MandelReference.cpp
     Palette.cpp
 )
-
-target_include_directories(mandel PUBLIC include)
-target_folder(mandel "Libraries")
 ```
 
 ## Mandel parameter block
@@ -43,7 +84,7 @@ C++ version:
 ```cpp
 #pragma once
 
-namespace mandel
+namespace core
 {
 
 struct MandelParams
@@ -64,7 +105,7 @@ struct MandelParams
     int periodicity_check;
 };
 
-} // namespace mandel
+} // namespace core
 ```
 
 Initial values:
@@ -95,14 +136,14 @@ MandelParams params{
 ```cpp
 #pragma once
 
-#include "mandel/MandelParams.h"
+#include "core/MandelParams.h"
 
-namespace mandel
+namespace core
 {
 
 int mandel_reference_pixel(const MandelParams& params, int px, int py);
 
-} // namespace mandel
+} // namespace core
 ```
 
 `MandelReference.cpp` should implement a straightforward Mandelbrot pixel
@@ -162,32 +203,29 @@ This keeps the algorithm simple and GPU-friendly.
 
 ```cmake
 find_package(SDL3 CONFIG REQUIRED)
-find_package(SDL3_shadercross CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
+find_package(wxWidgets CONFIG REQUIRED)
 
-add_executable(sdl3-gpu-mandel
-    main.cpp
-    SdlGpuContext.cpp
-    Shader.cpp
-)
-
-target_link_libraries(sdl3-gpu-mandel
-    PRIVATE
-        mandel
-        SDL3::SDL3
-        SDL3_shadercross::SDL3_shadercross
-        fmt::fmt
-)
-
-target_folder(sdl3-gpu-mandel "Tools")
+add_executable(mandel main.cpp)
+set_target_properties(
+    mandel
+    PROPERTIES WIN32_EXECUTABLE "$<PLATFORM_ID:Windows>")
+target_link_libraries(mandel PUBLIC core wxsdl)
+target_folder(mandel "Tools")
 ```
+
+The current tool is only the wx application shell.  Add core Mandelbrot
+code and shader targets when the CPU reference and GPU render path are
+introduced.  Keep SDL window access through
+`wxsdl::SdlCanvas::window()`.
 
 ## SDL3 GPU frame flow
 
-The runtime frame flow should be:
+The runtime frame flow should be driven by the wx event loop.  The main
+frame owns the canvas; rendering should live in a canvas-owned object or a
+small controller attached to the canvas.
 
 ```text
-poll SDL events
+wx dispatches paint, size, timer, and mouse events
 
 if parameters changed:
     update MandelParams buffer
@@ -211,6 +249,15 @@ end render pass
 
 submit command buffer
 ```
+
+Handle resize from wx size events.  Handle mouse input through wx mouse
+events on the canvas.  Do not add a second raw SDL event loop.
+
+## Input ownership
+
+Mouse input is handled by wxWidgets.  SDL is used for the window handle
+and GPU presentation path, not for application mouse input.  Do not poll
+or process SDL mouse events in the Mandelbrot tool.
 
 ## Texture strategy
 
@@ -357,20 +404,15 @@ Keep palette logic deliberately small for the talk.
 Minimal controls:
 
 ```text
-Esc       quit
-arrows    pan
-+ / -     zoom in/out
-[ / ]     decrease/increase max iterations
-p         toggle periodicity checking
-r         reset view
-1         show GPU compute output
-2         show CPU reference output, optional later
+drag      pan
+wheel     zoom in/out
 ```
 
-Do not implement a full UI.  This is a graphics API sample, not a full
-fractal application UI.
+Handle these through wx mouse events on the canvas.  Do not implement a
+full UI.  This is a graphics API sample, not a full fractal application
+UI.
 
-## Build order
+## Implementation Slices
 
 ### 1. CPU reference
 
@@ -381,39 +423,39 @@ fractal application UI.
   * `c = 2 + 2i` should escape quickly.
   * periodicity on/off should both produce valid bounded results.
 
-### 2. SDL3 window
+### 2. Canvas render host
 
-* Initialize SDL.
-* Create an SDL window.
-* Handle events.
-* Quit cleanly.
+* Add a canvas-owned render controller or small frame-owned controller.
+* Drive rendering from wx paint, size, and timer events.
+* Keep mouse input in wx.
+* Use the existing `SdlCanvas` window; do not create a second SDL window.
 
 ### 3. SDL3 GPU device
 
-* Create the SDL GPU device.
-* Claim the SDL window for the GPU device.
+* Create the SDL GPU device with the existing `sdlcpp` wrappers.
+* Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 4. fullscreen triangle
+### 4. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 5. compute output texture
+### 5. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 6. periodicity toggle
+### 6. Mouse interaction
 
-* Add `periodicity_check` to the parameter buffer.
-* Toggle with `p`.
-* Show difference in runtime or behavior.
+* Add mouse drag panning.
+* Add mouse wheel zoom.
+* Recompute parameters after mouse interaction.
 
 ### 7. CPU/GPU comparison, optional
 
@@ -439,10 +481,11 @@ CI should:
 
 1. configure,
 2. build,
-3. run CPU unit tests.
+3. run wrapper and CPU unit tests.
 
 CI should not require a real GPU device.  GPU runtime testing should be
-manual or opt-in.
+manual or opt-in.  Building the wx tool is fine; launching it in CI is
+not required.
 
 If Linux SDL3 dependencies become noisy, either:
 
@@ -453,7 +496,10 @@ If Linux SDL3 dependencies become noisy, either:
 Suggested option if needed:
 
 ```cmake
-option(SDL3_GPU_MANDEL_BUILD_TOOL "Build SDL3 GPU Mandelbrot demo executable" ON)
+option(
+    SDL3_GPU_MANDEL_BUILD_TOOL
+    "Build SDL3 GPU Mandelbrot demo executable"
+    ON)
 ```
 
 ## Out of scope
@@ -480,8 +526,8 @@ Use this structure:
 5. First compute shader.
 6. Compute-to-texture path.
 7. Presenting the texture.
-8. Adding periodicity checking.
-9. Practical vcpkg/CMake/shadercross issues.
+8. Mouse-driven navigation.
+9. Practical vcpkg/CMake/wxWidgets/shadercross issues.
 10. Where SDL3 GPU is useful and where it is not.
 
 ## Done
@@ -489,7 +535,7 @@ Use this structure:
 The sample is complete when:
 
 ```text
-The program opens a window, dispatches a Mandelbrot compute shader,
-writes iteration counts into an R32_UINT texture, displays the result,
-and lets the user toggle periodicity checking with the p key.
+The program opens a wx frame with an SdlCanvas, dispatches a Mandelbrot
+compute shader, writes iteration counts into an R32_UINT texture,
+displays the result, and lets the user pan and zoom with the mouse.
 ```

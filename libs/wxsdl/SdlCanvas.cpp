@@ -13,7 +13,7 @@ SdlCanvas::SdlCanvas(
     long style) :
     wxWindow(parent, id, pos, size, style)
 {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
     m_window = detail::AttachSdlWindow(*this);
 }
 

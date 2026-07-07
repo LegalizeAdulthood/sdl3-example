@@ -16,7 +16,7 @@ include(CTest)
 add_subdirectory(libs)
 add_subdirectory(tools)
 
-vs_startup_project(sdl3-mandel)
+vs_startup_project(mandel)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
