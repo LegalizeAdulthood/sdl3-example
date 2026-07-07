@@ -26,8 +26,8 @@ The repository now has the foundation targets needed for the demo:
 
 * `sdlcpp` owns small RAII wrappers around SDL handles and SDL GPU
   handles.
-* `core` owns the Mandelbrot parameter block and CPU pixel
-  evaluator.
+* `core` owns the Mandelbrot parameter block, CPU pixel evaluator,
+  iteration buffer, and CPU color-mapped image buffer.
 * `wxsdl` owns `wxsdl::SdlCanvas`, a `wxWindow` that attaches an SDL
   window to the native wx widget on Win32, Cocoa, and GTK/X11.
 * `mandel` is a wxWidgets GUI executable.  Its main frame creates and
@@ -35,7 +35,8 @@ The repository now has the foundation targets needed for the demo:
 * `mandel` owns a small render host that binds the canvas paint, size,
   and timer events.
 * Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
-  contract, and CPU Mandelbrot behavior.
+  contract, CPU Mandelbrot behavior, CPU iteration buffers, and CPU
+  color mapping.
 
 Future Mandelbrot code should build on this structure.  Do not go back to
 a raw SDL-only application unless the wx host is deliberately removed.
@@ -73,8 +74,11 @@ files have been dropped.
 ```cmake
 add_library(core
     include/core/MandelCpu.h
+    include/core/MandelImage.h
+    include/core/MandelIterationBuffer.h
     include/core/MandelParams.h
     MandelCpu.cpp
+    MandelImage.cpp
 )
 ```
 
@@ -140,18 +144,20 @@ MandelParams params{
 ```cpp
 #pragma once
 
+#include <core/MandelIterationBuffer.h>
 #include <core/MandelParams.h>
 
 namespace core
 {
 
 int mandel_cpu_pixel(const MandelParams& params, int px, int py);
+MandelIterationBuffer render_mandel_cpu(const MandelParams& params);
 
 } // namespace core
 ```
 
 `MandelCpu.cpp` implements a straightforward Mandelbrot pixel
-evaluator:
+evaluator and renders it into a CPU iteration buffer:
 
 1. map pixel coordinate to complex coordinate `c`,
 2. initialize `z = c + z0`,
@@ -467,14 +473,7 @@ fractal application UI.
 
 ## Implementation Slices
 
-### 1. CPU iteration buffer
-
-* Create a CPU iteration buffer type in `core`.
-* Render `MandelCpu` output into the iteration buffer.
-* Map iteration counts to colors in an image buffer.
-* Add unit tests for dimensions, selected iteration counts, and colors.
-
-### 2. wx CPU presentation
+### 1. wx CPU presentation
 
 * Add a plain wx window for CPU display.
 * Copy the color-mapped CPU image into a `wxImage` or `wxBitmap`.
@@ -482,7 +481,7 @@ fractal application UI.
 * Recompute CPU output on resize.
 * Select CPU presentation by default.
 
-### 3. CPU/GPU presentation switch
+### 2. CPU/GPU presentation switch
 
 * Add a menu item that switches between CPU and GPU results.
 * Keep the CPU wx window and GPU `SdlCanvas` in the same frame.
@@ -490,34 +489,34 @@ fractal application UI.
 * Bring the CPU window to the top for CPU presentation.
 * Bring the GPU `SdlCanvas` to the top for GPU presentation.
 
-### 4. Mouse interaction
+### 3. Mouse interaction
 
 * Add mouse drag panning.
 * Add mouse wheel zoom.
 * Recompute CPU parameters and image after mouse interaction.
 
-### 5. SDL3 GPU device
+### 4. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 6. Fullscreen triangle
+### 5. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 7. Compute output texture
+### 6. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 8. CPU/GPU comparison, optional
+### 7. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.

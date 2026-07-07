@@ -1,9 +1,22 @@
 #include <core/MandelCpu.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <vector>
 
 namespace core
 {
+
+namespace
+{
+
+std::size_t pixel_index(int width, int px, int py)
+{
+    return static_cast<std::size_t>(py) * static_cast<std::size_t>(width) + static_cast<std::size_t>(px);
+}
+
+} // namespace
 
 int mandel_cpu_pixel(const MandelParams &params, int px, int py)
 {
@@ -53,6 +66,24 @@ int mandel_cpu_pixel(const MandelParams &params, int px, int py)
     }
 
     return params.max_iterations;
+}
+
+MandelIterationBuffer render_mandel_cpu(const MandelParams &params)
+{
+    const int width = std::max(params.width, 0);
+    const int height = std::max(params.height, 0);
+    MandelIterationBuffer buffer{
+        width, height, std::vector<int>(static_cast<std::size_t>(width) * static_cast<std::size_t>(height))};
+
+    for (int py = 0; py < height; ++py)
+    {
+        for (int px = 0; px < width; ++px)
+        {
+            buffer.iterations[pixel_index(width, px, py)] = mandel_cpu_pixel(params, px, py);
+        }
+    }
+
+    return buffer;
 }
 
 } // namespace core
