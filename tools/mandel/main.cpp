@@ -1,6 +1,8 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_hints.h>
 
+#include "MandelRenderHost.h"
+
 #include <sdlcpp/Library.h>
 #include <wxsdl/SdlCanvas.h>
 
@@ -9,6 +11,8 @@
 #include <wx/menu.h>
 #include <wx/sizer.h>
 
+#include <memory>
+
 namespace
 {
 
@@ -16,6 +20,10 @@ class MandelFrame : public wxFrame
 {
 public:
     MandelFrame();
+
+private:
+    wxsdl::SdlCanvas *m_canvas{};
+    std::unique_ptr<mandel::MandelRenderHost> m_renderHost;
 };
 
 class MandelApp : public wxApp
@@ -54,9 +62,10 @@ MandelFrame::MandelFrame() :
     Bind(wxEVT_MENU, [this](wxCommandEvent &) { Close(true); }, wxID_EXIT);
 
     auto *sizer = new wxBoxSizer(wxVERTICAL);
-    auto *canvas = new wxsdl::SdlCanvas(this);
+    m_canvas = new wxsdl::SdlCanvas(this);
+    m_renderHost = std::make_unique<mandel::MandelRenderHost>(*m_canvas);
 
-    sizer->Add(canvas, 1, wxEXPAND);
+    sizer->Add(m_canvas, 1, wxEXPAND);
     SetSizer(sizer);
     wxTopLevelWindowBase::Layout();
 }

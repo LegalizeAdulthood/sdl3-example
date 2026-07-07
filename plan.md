@@ -30,6 +30,8 @@ The repository now has the foundation targets needed for the demo:
   window to the native wx widget on Win32, Cocoa, and GTK/X11.
 * `mandel` is a wxWidgets GUI executable.  Its main frame creates and
   lays out an `SdlCanvas`.
+* `mandel` owns a small render host that binds the canvas paint, size,
+  and timer events.
 * Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
   contract, and CPU Mandelbrot behavior.
 
@@ -213,16 +215,14 @@ target_link_libraries(mandel PUBLIC core wxsdl)
 target_folder(mandel "Tools")
 ```
 
-The current tool is only the wx application shell.  Add core Mandelbrot
-code and shader targets when the CPU reference and GPU render path are
-introduced.  Keep SDL window access through
-`wxsdl::SdlCanvas::window()`.
+The current tool is the wx application shell and render host.  Add shader
+targets when the GPU render path is introduced.  Keep SDL window access
+through `wxsdl::SdlCanvas::window()`.
 
 ## SDL3 GPU frame flow
 
 The runtime frame flow should be driven by the wx event loop.  The main
-frame owns the canvas; rendering should live in a canvas-owned object or a
-small controller attached to the canvas.
+frame owns the canvas and a small render host attached to the canvas.
 
 ```text
 wx dispatches paint, size, timer, and mouse events
@@ -414,41 +414,34 @@ UI.
 
 ## Implementation Slices
 
-### 1. Canvas render host
-
-* Add a canvas-owned render controller or small frame-owned controller.
-* Drive rendering from wx paint, size, and timer events.
-* Keep mouse input in wx.
-* Use the existing `SdlCanvas` window; do not create a second SDL window.
-
-### 2. SDL3 GPU device
+### 1. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 3. Fullscreen triangle
+### 2. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 4. Compute output texture
+### 3. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 5. Mouse interaction
+### 4. Mouse interaction
 
 * Add mouse drag panning.
 * Add mouse wheel zoom.
 * Recompute parameters after mouse interaction.
 
-### 6. CPU/GPU comparison, optional
+### 5. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.
