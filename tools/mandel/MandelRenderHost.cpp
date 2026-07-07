@@ -5,7 +5,10 @@
 #include <core/MandelCpu.h>
 #include <core/MandelImage.h>
 
-#include <wx/brush.h>
+#include <sdlcpp/GpuCommandBuffer.h>
+#include <sdlcpp/GpuRenderPass.h>
+#include <sdlcpp/GpuSwapchainTexture.h>
+
 #include <wx/dcclient.h>
 #include <wx/event.h>
 #include <wx/image.h>
@@ -23,6 +26,11 @@ namespace
 {
 
 constexpr double zoom_scale_per_wheel_click = 0.8;
+
+constexpr SDL_GPUShaderFormat gpu_shader_formats =
+    SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL;
+
+constexpr SDL_FColor gpu_clear_color{0.0f, 1.0f, 0.0f, 1.0f};
 
 wxWindow *event_window(wxEvent &event)
 {
@@ -79,6 +87,8 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_cpuDisplay(cpu_display),
     m_canvas(canvas),
     m_palette(load_chroma_palette()),
+    m_gpuDevice(sdlcpp::make_gpu_device(gpu_shader_formats)),
+    m_gpuWindow(sdlcpp::claim_window_for_gpu_device(m_gpuDevice.get(), m_canvas.window().get())),
     m_timer(&frame)
 {
     m_cpuDisplay.SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -90,6 +100,7 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_frame.Bind(wxEVT_TIMER, &MandelRenderHost::OnTimer, this, m_timer.GetId());
     LayoutDisplays();
     SelectCpuPresentation();
+    SubmitEmptyGpuCommandBuffer();
     m_timer.Start(16);
 }
 
@@ -191,6 +202,28 @@ void MandelRenderHost::RenderCpuImage()
     m_cpuDirty = false;
 }
 
+void MandelRenderHost::RenderGpuFrame()
+{
+    auto command_buffer = sdlcpp::acquire_gpu_command_buffer(m_gpuDevice.get());
+    const auto swapchain_texture =
+        sdlcpp::wait_and_acquire_gpu_swapchain_texture(command_buffer.get(), m_canvas.window().get());
+
+    if (swapchain_texture)
+    {
+        const SDL_GPUColorTargetInfo target_info{swapchain_texture.texture, 0, 0, gpu_clear_color, SDL_GPU_LOADOP_CLEAR,
+            SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
+        sdlcpp::GpuRenderPass render_pass(command_buffer.get(), &target_info, 1);
+    }
+
+    command_buffer.submit();
+}
+
+void MandelRenderHost::SubmitEmptyGpuCommandBuffer()
+{
+    auto command_buffer = sdlcpp::acquire_gpu_command_buffer(m_gpuDevice.get());
+    command_buffer.submit();
+}
+
 void MandelRenderHost::UnbindMouseEvents(wxWindow &window)
 {
     window.Unbind(wxEVT_MOUSE_CAPTURE_LOST, &MandelRenderHost::OnMouseCaptureLost, this);
@@ -217,8 +250,7 @@ void MandelRenderHost::SelectGpuPresentation()
 void MandelRenderHost::OnCanvasPaint(wxPaintEvent &)
 {
     wxPaintDC paint{&m_canvas};
-    paint.SetBackground(*wxBLACK_BRUSH);
-    paint.Clear();
+    RenderGpuFrame();
 }
 
 void MandelRenderHost::OnCpuPaint(wxPaintEvent &)

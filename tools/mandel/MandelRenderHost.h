@@ -3,6 +3,8 @@
 #include <core/MandelImage.h>
 #include <core/MandelViewport.h>
 
+#include <sdlcpp/GpuDevice.h>
+#include <sdlcpp/GpuWindowClaim.h>
 #include <wxsdl/SdlCanvas.h>
 
 #include <wx/bitmap.h>
@@ -35,8 +37,10 @@ private:
     void InvalidateRender();
     void LayoutDisplays();
     void RefreshActiveDisplay();
+    void RenderGpuFrame();
     void RenderCpuImage();
     void ReleaseMouse();
+    void SubmitEmptyGpuCommandBuffer();
     void UnbindMouseEvents(wxWindow &window);
 
     void OnCanvasPaint(wxPaintEvent &event);
@@ -55,6 +59,8 @@ private:
     core::MandelPalette m_palette;
     core::MandelViewport m_viewport;
     Presentation m_presentation = Presentation::Cpu;
+    sdlcpp::GpuDevice m_gpuDevice;
+    sdlcpp::GpuWindowClaim m_gpuWindow;
     wxWindow *m_mouseCapture = nullptr;
     wxPoint m_lastMousePosition;
     wxTimer m_timer;

@@ -35,7 +35,9 @@ The repository now has the foundation targets needed for the demo:
 * `mandel` owns a small render host that draws CPU Mandelbrot output into
   the CPU display window, keeps CPU presentation selected by default, and
   switches between CPU and GPU presentation from the View menu.  Mouse
-  drag pans the view and the mouse wheel zooms around the cursor.
+  drag pans the view and the mouse wheel zooms around the cursor.  The GPU
+  display path owns an SDL GPU device, claims the SDL canvas window, and
+  clears the swapchain from the GPU paint handler.
 * Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
   contract, CPU Mandelbrot behavior, CPU iteration buffers, CPU color
   mapping, and viewport pan/zoom math.
@@ -475,28 +477,21 @@ fractal application UI.
 
 ## Implementation Slices
 
-### 1. SDL3 GPU device
-
-* Create the SDL GPU device with the existing `sdlcpp` wrappers.
-* Claim `SdlCanvas::window()` for the GPU device.
-* Acquire and submit an empty command buffer.
-* Clear the swapchain to verify presentation.
-
-### 2. Fullscreen triangle
+### 1. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 3. Compute output texture
+### 2. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 4. CPU/GPU comparison, optional
+### 3. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.

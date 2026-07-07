@@ -1,5 +1,7 @@
 #include <sdlcpp/GpuCommandBuffer.h>
+#include <sdlcpp/GpuDevice.h>
 #include <sdlcpp/GpuTexture.h>
+#include <sdlcpp/GpuWindowClaim.h>
 #include <sdlcpp/Properties.h>
 #include <sdlcpp/Window.h>
 
@@ -47,24 +49,25 @@ public:
         {
             return "GpuTexture";
         }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuCommandBuffer>)
+        {
+            return "GpuCommandBuffer";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuDevice>)
+        {
+            return "GpuDevice";
+        }
         else
         {
-            static_assert(std::is_same_v<T, sdlcpp::GpuCommandBuffer>);
-            return "GpuCommandBuffer";
+            static_assert(std::is_same_v<T, sdlcpp::GpuWindowClaim>);
+            return "GpuWindowClaim";
         }
     }
 };
 
-using SdlHandleTypes = ::testing::Types<
-    sdlcpp::Window,
-    sdlcpp::Properties,
-    sdlcpp::GpuTexture,
-    sdlcpp::GpuCommandBuffer>;
+using SdlHandleTypes = ::testing::Types<sdlcpp::Window, sdlcpp::Properties, sdlcpp::GpuTexture,
+    sdlcpp::GpuCommandBuffer, sdlcpp::GpuDevice, sdlcpp::GpuWindowClaim>;
 
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    SdlHandles,
-    SdlHandleTest,
-    SdlHandleTypes,
-    SdlHandleNames);
+INSTANTIATE_TYPED_TEST_SUITE_P(SdlHandles, SdlHandleTest, SdlHandleTypes, SdlHandleNames);
 
 } // namespace
