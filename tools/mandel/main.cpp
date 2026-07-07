@@ -16,6 +16,9 @@
 namespace
 {
 
+constexpr int CpuPresentationMenuId = wxID_HIGHEST + 1;
+constexpr int GpuPresentationMenuId = wxID_HIGHEST + 2;
+
 class MandelFrame : public wxFrame
 {
 public:
@@ -57,15 +60,24 @@ MandelFrame::MandelFrame() :
     auto *fileMenu = new wxMenu;
     fileMenu->Append(wxID_EXIT, "&Quit");
 
+    auto *viewMenu = new wxMenu;
+    viewMenu->AppendRadioItem(CpuPresentationMenuId, "&CPU");
+    viewMenu->AppendRadioItem(GpuPresentationMenuId, "&GPU");
+    viewMenu->Check(CpuPresentationMenuId, true);
+
     auto *menuBar = new wxMenuBar;
     menuBar->Append(fileMenu, "&File");
+    menuBar->Append(viewMenu, "&View");
     wxFrameBase::SetMenuBar(menuBar);
-    Bind(wxEVT_MENU, [this](wxCommandEvent &) { Close(true); }, wxID_EXIT);
 
     m_cpuDisplay =
         new wxWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxFULL_REPAINT_ON_RESIZE);
     m_canvas = new wxsdl::SdlCanvas(this);
     m_renderHost = std::make_unique<mandel::MandelRenderHost>(*this, *m_cpuDisplay, *m_canvas);
+
+    Bind(wxEVT_MENU, [this](wxCommandEvent &) { Close(true); }, wxID_EXIT);
+    Bind(wxEVT_MENU, [this](wxCommandEvent &) { m_renderHost->SelectCpuPresentation(); }, CpuPresentationMenuId);
+    Bind(wxEVT_MENU, [this](wxCommandEvent &) { m_renderHost->SelectGpuPresentation(); }, GpuPresentationMenuId);
 }
 
 bool MandelApp::OnInit()

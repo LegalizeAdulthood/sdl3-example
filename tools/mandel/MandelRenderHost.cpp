@@ -5,6 +5,7 @@
 #include <core/MandelCpu.h>
 #include <core/MandelImage.h>
 
+#include <wx/brush.h>
 #include <wx/dcclient.h>
 #include <wx/image.h>
 
@@ -118,8 +119,23 @@ void MandelRenderHost::LayoutDisplays()
     const wxSize size = m_frame.GetClientSize();
     m_cpuDisplay.SetSize(0, 0, size.GetWidth(), size.GetHeight());
     m_canvas.SetSize(0, 0, size.GetWidth(), size.GetHeight());
+    ApplyPresentationVisibility();
     m_cpuDirty = true;
     m_cpuDisplay.Refresh(false);
+}
+
+void MandelRenderHost::ApplyPresentationVisibility()
+{
+    if (m_presentation == Presentation::Cpu)
+    {
+        m_canvas.Hide();
+        m_cpuDisplay.Show();
+    }
+    else
+    {
+        m_cpuDisplay.Hide();
+        m_canvas.Show();
+    }
 }
 
 void MandelRenderHost::RenderCpuImage()
@@ -146,13 +162,23 @@ void MandelRenderHost::RenderCpuImage()
 
 void MandelRenderHost::SelectCpuPresentation()
 {
-    m_canvas.Lower();
-    m_cpuDisplay.Raise();
+    m_presentation = Presentation::Cpu;
+    ApplyPresentationVisibility();
+    m_cpuDisplay.Refresh(false);
+}
+
+void MandelRenderHost::SelectGpuPresentation()
+{
+    m_presentation = Presentation::Gpu;
+    ApplyPresentationVisibility();
+    m_canvas.Refresh(false);
 }
 
 void MandelRenderHost::OnCanvasPaint(wxPaintEvent &)
 {
     wxPaintDC paint{&m_canvas};
+    paint.SetBackground(*wxBLACK_BRUSH);
+    paint.Clear();
 }
 
 void MandelRenderHost::OnCpuPaint(wxPaintEvent &)
@@ -173,7 +199,14 @@ void MandelRenderHost::OnFrameSize(wxSizeEvent &event)
 
 void MandelRenderHost::OnTimer(wxTimerEvent &)
 {
-    m_cpuDisplay.Refresh(false);
+    if (m_presentation == Presentation::Cpu)
+    {
+        m_cpuDisplay.Refresh(false);
+    }
+    else
+    {
+        m_canvas.Refresh(false);
+    }
 }
 
 } // namespace mandel

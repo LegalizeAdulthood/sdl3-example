@@ -17,10 +17,19 @@ public:
     MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl::SdlCanvas &canvas);
     ~MandelRenderHost();
 
+    void SelectCpuPresentation();
+    void SelectGpuPresentation();
+
 private:
+    enum class Presentation
+    {
+        Cpu,
+        Gpu
+    };
+
+    void ApplyPresentationVisibility();
     void LayoutDisplays();
     void RenderCpuImage();
-    void SelectCpuPresentation();
 
     void OnCanvasPaint(wxPaintEvent &event);
     void OnCpuPaint(wxPaintEvent &event);
@@ -31,6 +40,7 @@ private:
     wxWindow &m_cpuDisplay;
     wxsdl::SdlCanvas &m_canvas;
     core::MandelPalette m_palette;
+    Presentation m_presentation = Presentation::Cpu;
     wxTimer m_timer;
     wxBitmap m_cpuBitmap;
     bool m_cpuDirty = true;

@@ -33,7 +33,8 @@ The repository now has the foundation targets needed for the demo:
 * `mandel` is a wxWidgets GUI executable.  Its main frame creates a
   plain CPU display `wxWindow` and an `SdlCanvas`.
 * `mandel` owns a small render host that draws CPU Mandelbrot output into
-  the CPU display window and keeps CPU presentation selected by default.
+  the CPU display window, keeps CPU presentation selected by default, and
+  switches between CPU and GPU presentation from the View menu.
 * Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
   contract, CPU Mandelbrot behavior, CPU iteration buffers, and CPU
   color mapping.
@@ -227,9 +228,9 @@ target_link_libraries(mandel PUBLIC core wxsdl)
 target_folder(mandel "Tools")
 ```
 
-The current tool is the wx application shell and render host.  Add a
-menu switch before adding the GPU render path.  Add shader targets when
-the GPU render path is introduced.  Keep SDL window access through
+The current tool is the wx application shell and render host with a
+CPU/GPU presentation switch.  Add shader targets when the GPU render path
+is introduced.  Keep SDL window access through
 `wxsdl::SdlCanvas::window()`.
 
 ## Presentation model
@@ -245,13 +246,13 @@ The CPU result is selected by default.  Render CPU iteration counts into
 a buffer, map those counts to colors in a `wxImage` or `wxBitmap`, and
 copy that image in the CPU display window's paint handler.
 
-Add a menu item that switches between CPU and GPU results.  Keep both
-display windows in the same frame and use Z order to choose the active
+The View menu switches between CPU and GPU results.  Keep both display
+windows in the same frame and use visibility to choose the active
 presentation:
 
 ```text
-CPU selected:  CPU wxWindow on top, GPU SdlCanvas behind it
-GPU selected:  CPU wxWindow behind it, GPU SdlCanvas on top
+CPU selected:  CPU wxWindow shown, GPU SdlCanvas hidden
+GPU selected:  CPU wxWindow hidden, GPU SdlCanvas shown
 ```
 
 Do not mix CPU drawing into the SDL canvas, and do not use the GPU
@@ -473,42 +474,34 @@ fractal application UI.
 
 ## Implementation Slices
 
-### 1. CPU/GPU presentation switch
-
-* Add a menu item that switches between CPU and GPU results.
-* Keep the CPU wx window and GPU `SdlCanvas` in the same frame.
-* Use Z order to select the active presentation window.
-* Bring the CPU window to the top for CPU presentation.
-* Bring the GPU `SdlCanvas` to the top for GPU presentation.
-
-### 2. Mouse interaction
+### 1. Mouse interaction
 
 * Add mouse drag panning.
 * Add mouse wheel zoom.
 * Recompute CPU parameters and image after mouse interaction.
 
-### 3. SDL3 GPU device
+### 2. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 4. Fullscreen triangle
+### 3. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 5. Compute output texture
+### 4. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 6. CPU/GPU comparison, optional
+### 5. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.
