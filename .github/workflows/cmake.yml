@@ -34,6 +34,8 @@ jobs:
         ${{github.workspace}}/vcpkg/bootstrap-vcpkg.sh
         echo "man-db man-db/auto-update boolean false" | sudo debconf-set-selections
         sudo dpkg-reconfigure man-db
+        sudo rm -f /etc/apt/sources.list.d/azure-cli.list /etc/apt/sources.list.d/azure-cli.sources
+        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
         sudo apt-get update
         sed 's/#.*//' ${{github.workspace}}/.github/workflows/requirements.txt | xargs sudo apt-get install
 
