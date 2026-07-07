@@ -3,9 +3,15 @@
 #include "sdlcpp/GpuFence.h"
 
 #include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_video.h>
 
 namespace sdlcpp
 {
+
+class GpuComputePass;
+class GpuCopyPass;
+class GpuRenderPass;
+struct GpuSwapchainTexture;
 
 class GpuCommandBuffer
 {
@@ -21,10 +27,23 @@ public:
     GpuCommandBuffer &operator=(GpuCommandBuffer &&other) noexcept;
 
     void reset() noexcept;
-    void cancel();
-    void submit();
-    [[nodiscard]] GpuFence submit_and_acquire_fence();
+    void CancelGPUCommandBuffer();
+    void SubmitGPUCommandBuffer();
+    [[nodiscard]] GpuFence SubmitGPUCommandBufferAndAcquireFence();
     [[nodiscard]] SDL_GPUCommandBuffer *release() noexcept;
+    [[nodiscard]] GpuComputePass BeginGPUComputePass(
+        const SDL_GPUStorageTextureReadWriteBinding *storage_texture_bindings = nullptr,
+        Uint32 num_storage_texture_bindings = 0,
+        const SDL_GPUStorageBufferReadWriteBinding *storage_buffer_bindings = nullptr,
+        Uint32 num_storage_buffer_bindings = 0);
+    [[nodiscard]] GpuCopyPass BeginGPUCopyPass();
+    [[nodiscard]] GpuRenderPass BeginGPURenderPass(const SDL_GPUColorTargetInfo *color_target_infos,
+        Uint32 num_color_targets, const SDL_GPUDepthStencilTargetInfo *depth_stencil_target_info = nullptr);
+    void PushGPUVertexUniformData(Uint32 slot_index, const void *data, Uint32 length);
+    void PushGPUFragmentUniformData(Uint32 slot_index, const void *data, Uint32 length);
+    void PushGPUComputeUniformData(Uint32 slot_index, const void *data, Uint32 length);
+    [[nodiscard]] GpuSwapchainTexture AcquireGPUSwapchainTexture(SDL_Window *window);
+    [[nodiscard]] GpuSwapchainTexture WaitAndAcquireGPUSwapchainTexture(SDL_Window *window);
 
     [[nodiscard]] SDL_GPUDevice *device() const noexcept
     {

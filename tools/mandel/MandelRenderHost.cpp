@@ -96,9 +96,9 @@ core::MandelPalette load_chroma_palette()
     return palette;
 }
 
-const ShaderAssetFormat &shader_asset_format(SDL_GPUDevice *device)
+const ShaderAssetFormat &shader_asset_format(const sdlcpp::GpuDevice &device)
 {
-    const SDL_GPUShaderFormat supported_formats = SDL_GetGPUShaderFormats(device);
+    const SDL_GPUShaderFormat supported_formats = device.GetGPUShaderFormats();
     for (const auto &asset_format : shader_asset_formats)
     {
         if ((supported_formats & asset_format.format) != 0)
@@ -127,8 +127,9 @@ std::vector<Uint8> read_shader_code(const std::string &path)
     return std::vector<Uint8>{code.begin(), code.end()};
 }
 
-sdlcpp::GpuShader load_graphics_shader(SDL_GPUDevice *device, const char *asset_name, SDL_GPUShaderStage stage,
-    Uint32 num_storage_textures = 0, Uint32 num_storage_buffers = 0, Uint32 num_uniform_buffers = 0)
+sdlcpp::GpuShader load_graphics_shader(const sdlcpp::GpuDevice &device, const char *asset_name,
+    SDL_GPUShaderStage stage, Uint32 num_storage_textures = 0, Uint32 num_storage_buffers = 0,
+    Uint32 num_uniform_buffers = 0)
 {
     const auto &asset_format = shader_asset_format(device);
     const auto path = std::string{assets_dir} + "/" + asset_name + asset_format.extension;
@@ -144,10 +145,10 @@ sdlcpp::GpuShader load_graphics_shader(SDL_GPUDevice *device, const char *asset_
     create_info.num_storage_buffers = num_storage_buffers;
     create_info.num_uniform_buffers = num_uniform_buffers;
 
-    return sdlcpp::make_gpu_shader(device, create_info);
+    return device.CreateGPUShader(create_info);
 }
 
-sdlcpp::GpuComputePipeline load_mandel_compute_pipeline(SDL_GPUDevice *device)
+sdlcpp::GpuComputePipeline load_mandel_compute_pipeline(const sdlcpp::GpuDevice &device)
 {
     const auto &asset_format = shader_asset_format(device);
     const auto path = std::string{assets_dir} + "/mandel.comp" + asset_format.extension;
@@ -164,7 +165,7 @@ sdlcpp::GpuComputePipeline load_mandel_compute_pipeline(SDL_GPUDevice *device)
     create_info.threadcount_y = mandel_workgroup_size;
     create_info.threadcount_z = 1;
 
-    return sdlcpp::make_gpu_compute_pipeline(device, create_info);
+    return device.CreateGPUComputePipeline(create_info);
 }
 
 GpuMandelParams make_gpu_mandel_params(const core::MandelParams &params)
@@ -201,44 +202,38 @@ Uint32 pack_palette_color(const core::Rgba8 &color)
         (static_cast<Uint32>(color.blue) << 16) | (static_cast<Uint32>(color.alpha) << 24);
 }
 
-sdlcpp::GpuBuffer make_palette_buffer(SDL_GPUDevice *device, const core::MandelPalette &palette)
+sdlcpp::GpuBuffer make_palette_buffer(const sdlcpp::GpuDevice &device, const core::MandelPalette &palette)
 {
     const auto buffer_size = static_cast<Uint32>(palette.colors.size() * sizeof(Uint32));
 
     SDL_GPUBufferCreateInfo buffer_create_info{};
     buffer_create_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
     buffer_create_info.size = buffer_size;
-    auto palette_buffer = sdlcpp::make_gpu_buffer(device, buffer_create_info);
+    auto palette_buffer = device.CreateGPUBuffer(buffer_create_info);
 
     SDL_GPUTransferBufferCreateInfo transfer_create_info{};
     transfer_create_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
     transfer_create_info.size = buffer_size;
-    auto transfer_buffer = sdlcpp::make_gpu_transfer_buffer(device, transfer_create_info);
+    auto transfer_buffer = device.CreateGPUTransferBuffer(transfer_create_info);
 
-    auto *mapped = static_cast<Uint32 *>(SDL_MapGPUTransferBuffer(device, transfer_buffer.get(), false));
-    if (mapped == nullptr)
-    {
-        sdlcpp::throw_error("SDL_MapGPUTransferBuffer");
-    }
+    auto *mapped = static_cast<Uint32 *>(device.MapGPUTransferBuffer(transfer_buffer, false));
 
     for (std::size_t index = 0; index < palette.colors.size(); ++index)
     {
         mapped[index] = pack_palette_color(palette.colors[index]);
     }
-    SDL_UnmapGPUTransferBuffer(device, transfer_buffer.get());
+    device.UnmapGPUTransferBuffer(transfer_buffer);
 
-    auto command_buffer = sdlcpp::acquire_gpu_command_buffer(device);
-    const SDL_GPUTransferBufferLocation source{transfer_buffer.get(), 0};
-    const SDL_GPUBufferRegion destination{palette_buffer.get(), 0, buffer_size};
-    sdlcpp::GpuCopyPass copy_pass(command_buffer.get());
-    SDL_UploadToGPUBuffer(copy_pass.get(), &source, &destination, false);
-    copy_pass.end();
-    command_buffer.submit();
+    auto command_buffer = device.AcquireGPUCommandBuffer();
+    auto copy_pass = command_buffer.BeginGPUCopyPass();
+    copy_pass.UploadToGPUBuffer(transfer_buffer, 0, palette_buffer, 0, buffer_size, false);
+    copy_pass.EndGPUCopyPass();
+    command_buffer.SubmitGPUCommandBuffer();
 
     return palette_buffer;
 }
 
-sdlcpp::GpuTexture make_iteration_texture(SDL_GPUDevice *device, const wxSize &size)
+sdlcpp::GpuTexture make_iteration_texture(const sdlcpp::GpuDevice &device, const wxSize &size)
 {
     SDL_GPUTextureCreateInfo create_info{};
     create_info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -250,14 +245,14 @@ sdlcpp::GpuTexture make_iteration_texture(SDL_GPUDevice *device, const wxSize &s
     create_info.num_levels = 1;
     create_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
-    return sdlcpp::make_gpu_texture(device, create_info);
+    return device.CreateGPUTexture(create_info);
 }
 
 sdlcpp::GpuGraphicsPipeline make_blit_pipeline(
-    SDL_GPUDevice *device, SDL_Window *window, SDL_GPUShader *vertex_shader, SDL_GPUShader *fragment_shader)
+    const sdlcpp::GpuDevice &device, SDL_Window *window, SDL_GPUShader *vertex_shader, SDL_GPUShader *fragment_shader)
 {
     SDL_GPUColorTargetDescription color_target_description{};
-    color_target_description.format = SDL_GetGPUSwapchainTextureFormat(device, window);
+    color_target_description.format = device.GetGPUSwapchainTextureFormat(window);
 
     SDL_GPUGraphicsPipelineCreateInfo create_info{};
     create_info.vertex_shader = vertex_shader;
@@ -270,7 +265,7 @@ sdlcpp::GpuGraphicsPipeline make_blit_pipeline(
     create_info.target_info.color_target_descriptions = &color_target_description;
     create_info.target_info.num_color_targets = 1;
 
-    return sdlcpp::make_gpu_graphics_pipeline(device, create_info);
+    return device.CreateGPUGraphicsPipeline(create_info);
 }
 
 std::size_t pixel_index(int width, int px, int py)
@@ -306,13 +301,13 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_canvas(canvas),
     m_palette(load_chroma_palette()),
     m_gpuDevice(sdlcpp::make_gpu_device(gpu_shader_formats)),
-    m_gpuWindow(sdlcpp::claim_window_for_gpu_device(m_gpuDevice.get(), m_canvas.window().get())),
-    m_mandelComputePipeline(load_mandel_compute_pipeline(m_gpuDevice.get())),
-    m_blitVertexShader(load_graphics_shader(m_gpuDevice.get(), "blit.vert", SDL_GPU_SHADERSTAGE_VERTEX)),
-    m_blitFragmentShader(load_graphics_shader(m_gpuDevice.get(), "blit.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1, 1)),
-    m_blitPipeline(make_blit_pipeline(
-        m_gpuDevice.get(), m_canvas.window().get(), m_blitVertexShader.get(), m_blitFragmentShader.get())),
-    m_paletteBuffer(make_palette_buffer(m_gpuDevice.get(), m_palette)),
+    m_gpuWindow(m_gpuDevice.ClaimWindowForGPUDevice(m_canvas.window().get())),
+    m_mandelComputePipeline(load_mandel_compute_pipeline(m_gpuDevice)),
+    m_blitVertexShader(load_graphics_shader(m_gpuDevice, "blit.vert", SDL_GPU_SHADERSTAGE_VERTEX)),
+    m_blitFragmentShader(load_graphics_shader(m_gpuDevice, "blit.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1, 1)),
+    m_blitPipeline(
+        make_blit_pipeline(m_gpuDevice, m_canvas.window().get(), m_blitVertexShader.get(), m_blitFragmentShader.get())),
+    m_paletteBuffer(make_palette_buffer(m_gpuDevice, m_palette)),
     m_timer(&frame)
 {
     m_cpuDisplay.SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -368,7 +363,7 @@ void MandelRenderHost::EnsureGpuTexture(const wxSize &size)
         return;
     }
 
-    m_iterationTexture = make_iteration_texture(m_gpuDevice.get(), size);
+    m_iterationTexture = make_iteration_texture(m_gpuDevice, size);
     m_gpuTextureSize = size;
     m_gpuDirty = true;
 }
@@ -439,7 +434,7 @@ void MandelRenderHost::RenderCpuImage()
     m_cpuDirty = false;
 }
 
-void MandelRenderHost::RenderGpuImage(SDL_GPUCommandBuffer *command_buffer, const wxSize &size)
+void MandelRenderHost::RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, const wxSize &size)
 {
     if (!m_gpuDirty)
     {
@@ -448,12 +443,12 @@ void MandelRenderHost::RenderGpuImage(SDL_GPUCommandBuffer *command_buffer, cons
 
     const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
     const auto gpu_params = make_gpu_mandel_params(params);
-    SDL_PushGPUComputeUniformData(command_buffer, 0, &gpu_params, sizeof(gpu_params));
+    command_buffer.PushGPUComputeUniformData(0, &gpu_params, sizeof(gpu_params));
 
     const SDL_GPUStorageTextureReadWriteBinding output_texture{m_iterationTexture.get(), 0, 0, true, 0, 0, 0};
-    sdlcpp::GpuComputePass compute_pass(command_buffer, &output_texture, 1);
-    SDL_BindGPUComputePipeline(compute_pass.get(), m_mandelComputePipeline.get());
-    SDL_DispatchGPUCompute(compute_pass.get(), ceil_div(static_cast<Uint32>(size.GetWidth()), mandel_workgroup_size),
+    auto compute_pass = command_buffer.BeginGPUComputePass(&output_texture, 1);
+    compute_pass.BindGPUComputePipeline(m_mandelComputePipeline);
+    compute_pass.DispatchGPUCompute(ceil_div(static_cast<Uint32>(size.GetWidth()), mandel_workgroup_size),
         ceil_div(static_cast<Uint32>(size.GetHeight()), mandel_workgroup_size), 1);
     m_gpuDirty = false;
 }
@@ -468,34 +463,31 @@ void MandelRenderHost::RenderGpuFrame()
 
     EnsureGpuTexture(size);
 
-    auto command_buffer = sdlcpp::acquire_gpu_command_buffer(m_gpuDevice.get());
-    RenderGpuImage(command_buffer.get(), size);
-    const auto swapchain_texture =
-        sdlcpp::wait_and_acquire_gpu_swapchain_texture(command_buffer.get(), m_canvas.window().get());
+    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    RenderGpuImage(command_buffer, size);
+    const auto swapchain_texture = command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
 
     if (swapchain_texture)
     {
         const SDL_GPUColorTargetInfo target_info{swapchain_texture.texture, 0, 0, gpu_clear_color, SDL_GPU_LOADOP_CLEAR,
             SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
-        sdlcpp::GpuRenderPass render_pass(command_buffer.get(), &target_info, 1);
+        auto render_pass = command_buffer.BeginGPURenderPass(&target_info, 1);
         const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
         const auto gpu_params = make_gpu_blit_params(params, m_palette);
-        auto *iteration_texture = m_iterationTexture.get();
-        auto *palette_buffer = m_paletteBuffer.get();
-        SDL_PushGPUFragmentUniformData(command_buffer.get(), 0, &gpu_params, sizeof(gpu_params));
-        SDL_BindGPUGraphicsPipeline(render_pass.get(), m_blitPipeline.get());
-        SDL_BindGPUFragmentStorageTextures(render_pass.get(), 0, &iteration_texture, 1);
-        SDL_BindGPUFragmentStorageBuffers(render_pass.get(), 0, &palette_buffer, 1);
-        SDL_DrawGPUPrimitives(render_pass.get(), 3, 1, 0, 0);
+        command_buffer.PushGPUFragmentUniformData(0, &gpu_params, sizeof(gpu_params));
+        render_pass.BindGPUGraphicsPipeline(m_blitPipeline);
+        render_pass.BindGPUFragmentStorageTextures(0, m_iterationTexture);
+        render_pass.BindGPUFragmentStorageBuffers(0, m_paletteBuffer);
+        render_pass.DrawGPUPrimitives(3, 1, 0, 0);
     }
 
-    command_buffer.submit();
+    command_buffer.SubmitGPUCommandBuffer();
 }
 
 void MandelRenderHost::SubmitEmptyGpuCommandBuffer()
 {
-    auto command_buffer = sdlcpp::acquire_gpu_command_buffer(m_gpuDevice.get());
-    command_buffer.submit();
+    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    command_buffer.SubmitGPUCommandBuffer();
 }
 
 void MandelRenderHost::UnbindMouseEvents(wxWindow &window)

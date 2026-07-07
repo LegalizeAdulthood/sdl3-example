@@ -1,6 +1,8 @@
 #include <sdlcpp/sdl.h>
 
 #include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_hints.h>
 
 #include <stdexcept>
 
@@ -41,6 +43,18 @@ void require_pointer(const void *pointer, const char *name)
         message += " must not be null";
         throw std::invalid_argument(message);
     }
+}
+
+bool SetHint(const char *name, const char *value)
+{
+    require_pointer(name, "name");
+    require_pointer(value, "value");
+    return SDL_SetHint(name, value);
+}
+
+void SetEventEnabled(Uint32 type, bool enabled)
+{
+    SDL_SetEventEnabled(type, enabled);
 }
 
 } // namespace sdlcpp

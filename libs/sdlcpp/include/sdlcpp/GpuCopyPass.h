@@ -1,15 +1,20 @@
 #pragma once
 
+#include "sdlcpp/GpuBuffer.h"
+#include "sdlcpp/GpuTransferBuffer.h"
+
 #include <SDL3/SDL_gpu.h>
 
 namespace sdlcpp
 {
 
+class GpuCommandBuffer;
+
 class GpuCopyPass
 {
 public:
     GpuCopyPass() noexcept = default;
-    explicit GpuCopyPass(SDL_GPUCommandBuffer *command_buffer);
+    explicit GpuCopyPass(SDL_GPUCopyPass *copy_pass) noexcept;
     ~GpuCopyPass();
 
     GpuCopyPass(const GpuCopyPass &) = delete;
@@ -18,8 +23,11 @@ public:
     GpuCopyPass(GpuCopyPass &&other) noexcept;
     GpuCopyPass &operator=(GpuCopyPass &&other) noexcept;
 
-    void begin(SDL_GPUCommandBuffer *command_buffer);
-    void end() noexcept;
+    void EndGPUCopyPass() noexcept;
+    void UploadToGPUBuffer(
+        const SDL_GPUTransferBufferLocation *source, const SDL_GPUBufferRegion *destination, bool cycle);
+    void UploadToGPUBuffer(const GpuTransferBuffer &source_buffer, Uint32 source_offset,
+        const GpuBuffer &destination_buffer, Uint32 destination_offset, Uint32 size, bool cycle);
 
     [[nodiscard]] SDL_GPUCopyPass *get() const noexcept
     {

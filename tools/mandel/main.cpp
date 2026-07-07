@@ -1,9 +1,7 @@
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_hints.h>
-
 #include "MandelRenderHost.h"
 
 #include <sdlcpp/Library.h>
+#include <sdlcpp/sdl.h>
 #include <wxsdl/SdlCanvas.h>
 
 #include <wx/app.h>
@@ -42,16 +40,16 @@ private:
 
 MandelApp::MandelApp()
 {
-    SDL_SetHint(SDL_HINT_WINDOWS_ENABLE_MENU_MNEMONICS, "1");
-    SDL_SetEventEnabled(SDL_EVENT_KEY_DOWN, false);
-    SDL_SetEventEnabled(SDL_EVENT_KEY_UP, false);
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_EDITING, false);
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_INPUT, false);
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_EDITING_CANDIDATES, false);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_DOWN, false);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_UP, false);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_WHEEL, false);
+    sdlcpp::SetHint(SDL_HINT_WINDOWS_ENABLE_MENU_MNEMONICS, "1");
+    sdlcpp::SetEventEnabled(SDL_EVENT_KEY_DOWN, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_KEY_UP, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_TEXT_EDITING, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_TEXT_INPUT, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_TEXT_EDITING_CANDIDATES, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_DOWN, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_UP, false);
+    sdlcpp::SetEventEnabled(SDL_EVENT_MOUSE_WHEEL, false);
 }
 
 MandelFrame::MandelFrame() :

@@ -4,6 +4,7 @@
 #include <core/MandelViewport.h>
 
 #include <sdlcpp/GpuBuffer.h>
+#include <sdlcpp/GpuCommandBuffer.h>
 #include <sdlcpp/GpuComputePipeline.h>
 #include <sdlcpp/GpuDevice.h>
 #include <sdlcpp/GpuGraphicsPipeline.h>
@@ -42,7 +43,7 @@ private:
     void InvalidateRender();
     void EnsureGpuTexture(const wxSize &size);
     void LayoutDisplays();
-    void RenderGpuImage(SDL_GPUCommandBuffer *command_buffer, const wxSize &size);
+    void RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, const wxSize &size);
     void RefreshActiveDisplay();
     void RenderGpuFrame();
     void RenderCpuImage();

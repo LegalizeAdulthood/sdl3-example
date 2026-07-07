@@ -1,14 +1,17 @@
 #include <sdlcpp/GpuBuffer.h>
 #include <sdlcpp/GpuCommandBuffer.h>
+#include <sdlcpp/GpuComputePass.h>
 #include <sdlcpp/GpuComputePipeline.h>
 #include <sdlcpp/GpuCopyPass.h>
 #include <sdlcpp/GpuDevice.h>
 #include <sdlcpp/GpuGraphicsPipeline.h>
+#include <sdlcpp/GpuRenderPass.h>
 #include <sdlcpp/GpuShader.h>
 #include <sdlcpp/GpuTexture.h>
 #include <sdlcpp/GpuTransferBuffer.h>
 #include <sdlcpp/GpuWindowClaim.h>
 #include <sdlcpp/Properties.h>
+#include <sdlcpp/sdl.h>
 #include <sdlcpp/Window.h>
 
 #include <gtest/gtest.h>
@@ -79,9 +82,17 @@ public:
         {
             return "GpuCommandBuffer";
         }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuComputePass>)
+        {
+            return "GpuComputePass";
+        }
         else if constexpr (std::is_same_v<T, sdlcpp::GpuCopyPass>)
         {
             return "GpuCopyPass";
+        }
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuRenderPass>)
+        {
+            return "GpuRenderPass";
         }
         else if constexpr (std::is_same_v<T, sdlcpp::GpuDevice>)
         {
@@ -97,8 +108,18 @@ public:
 
 using SdlHandleTypes = ::testing::Types<sdlcpp::Window, sdlcpp::Properties, sdlcpp::GpuTexture, sdlcpp::GpuBuffer,
     sdlcpp::GpuTransferBuffer, sdlcpp::GpuShader, sdlcpp::GpuGraphicsPipeline, sdlcpp::GpuComputePipeline,
-    sdlcpp::GpuCommandBuffer, sdlcpp::GpuCopyPass, sdlcpp::GpuDevice, sdlcpp::GpuWindowClaim>;
+    sdlcpp::GpuCommandBuffer, sdlcpp::GpuComputePass, sdlcpp::GpuCopyPass, sdlcpp::GpuRenderPass, sdlcpp::GpuDevice,
+    sdlcpp::GpuWindowClaim>;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(SdlHandles, SdlHandleTest, SdlHandleTypes, SdlHandleNames);
+
+TEST(sdl, exposesSdlStyleFreeFunctions)
+{
+    using SetHintFunction = bool (*)(const char *, const char *);
+    using SetEventEnabledFunction = void (*)(Uint32, bool);
+
+    static_assert(std::is_same_v<decltype(&sdlcpp::SetHint), SetHintFunction>);
+    static_assert(std::is_same_v<decltype(&sdlcpp::SetEventEnabled), SetEventEnabledFunction>);
+}
 
 } // namespace

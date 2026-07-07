@@ -1,5 +1,8 @@
 #include <sdlcpp/GpuRenderPass.h>
 
+#include <sdlcpp/GpuBuffer.h>
+#include <sdlcpp/GpuGraphicsPipeline.h>
+#include <sdlcpp/GpuTexture.h>
 #include <sdlcpp/sdl.h>
 
 #include <utility>
@@ -7,15 +10,14 @@
 namespace sdlcpp
 {
 
-GpuRenderPass::GpuRenderPass(SDL_GPUCommandBuffer *command_buffer, const SDL_GPUColorTargetInfo *color_target_infos,
-    Uint32 num_color_targets, const SDL_GPUDepthStencilTargetInfo *depth_stencil_target_info)
+GpuRenderPass::GpuRenderPass(SDL_GPURenderPass *render_pass) noexcept :
+    render_pass_(render_pass)
 {
-    begin(command_buffer, color_target_infos, num_color_targets, depth_stencil_target_info);
 }
 
 GpuRenderPass::~GpuRenderPass()
 {
-    end();
+    EndGPURenderPass();
 }
 
 GpuRenderPass::GpuRenderPass(GpuRenderPass &&other) noexcept :
@@ -27,33 +29,63 @@ GpuRenderPass &GpuRenderPass::operator=(GpuRenderPass &&other) noexcept
 {
     if (this != &other)
     {
-        end();
+        EndGPURenderPass();
         render_pass_ = std::exchange(other.render_pass_, nullptr);
     }
     return *this;
 }
 
-void GpuRenderPass::begin(SDL_GPUCommandBuffer *command_buffer, const SDL_GPUColorTargetInfo *color_target_infos,
-    Uint32 num_color_targets, const SDL_GPUDepthStencilTargetInfo *depth_stencil_target_info)
-{
-    require_pointer(command_buffer, "command_buffer");
-    require_pointer(color_target_infos, "color_target_infos");
-    end();
-    render_pass_ =
-        SDL_BeginGPURenderPass(command_buffer, color_target_infos, num_color_targets, depth_stencil_target_info);
-    if (render_pass_ == nullptr)
-    {
-        throw_error("SDL_BeginGPURenderPass");
-    }
-}
-
-void GpuRenderPass::end() noexcept
+void GpuRenderPass::EndGPURenderPass() noexcept
 {
     if (render_pass_ != nullptr)
     {
         SDL_EndGPURenderPass(render_pass_);
         render_pass_ = nullptr;
     }
+}
+
+void GpuRenderPass::BindGPUGraphicsPipeline(const GpuGraphicsPipeline &graphics_pipeline)
+{
+    require_pointer(render_pass_, "render_pass");
+    require_pointer(graphics_pipeline.get(), "graphics_pipeline");
+    SDL_BindGPUGraphicsPipeline(render_pass_, graphics_pipeline.get());
+}
+
+void GpuRenderPass::BindGPUFragmentStorageTextures(
+    Uint32 first_slot, SDL_GPUTexture *const *storage_textures, Uint32 num_bindings)
+{
+    require_pointer(render_pass_, "render_pass");
+    require_pointer(storage_textures, "storage_textures");
+    SDL_BindGPUFragmentStorageTextures(render_pass_, first_slot, storage_textures, num_bindings);
+}
+
+void GpuRenderPass::BindGPUFragmentStorageTextures(Uint32 first_slot, const GpuTexture &texture)
+{
+    auto *storage_texture = texture.get();
+    require_pointer(storage_texture, "texture");
+    BindGPUFragmentStorageTextures(first_slot, &storage_texture, 1);
+}
+
+void GpuRenderPass::BindGPUFragmentStorageBuffers(
+    Uint32 first_slot, SDL_GPUBuffer *const *storage_buffers, Uint32 num_bindings)
+{
+    require_pointer(render_pass_, "render_pass");
+    require_pointer(storage_buffers, "storage_buffers");
+    SDL_BindGPUFragmentStorageBuffers(render_pass_, first_slot, storage_buffers, num_bindings);
+}
+
+void GpuRenderPass::BindGPUFragmentStorageBuffers(Uint32 first_slot, const GpuBuffer &buffer)
+{
+    auto *storage_buffer = buffer.get();
+    require_pointer(storage_buffer, "buffer");
+    BindGPUFragmentStorageBuffers(first_slot, &storage_buffer, 1);
+}
+
+void GpuRenderPass::DrawGPUPrimitives(
+    Uint32 num_vertices, Uint32 num_instances, Uint32 first_vertex, Uint32 first_instance)
+{
+    require_pointer(render_pass_, "render_pass");
+    SDL_DrawGPUPrimitives(render_pass_, num_vertices, num_instances, first_vertex, first_instance);
 }
 
 } // namespace sdlcpp

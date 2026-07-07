@@ -1,19 +1,19 @@
 #pragma once
 
+#include "sdlcpp/GpuComputePipeline.h"
+
 #include <SDL3/SDL_gpu.h>
 
 namespace sdlcpp
 {
 
+class GpuCommandBuffer;
+
 class GpuComputePass
 {
 public:
     GpuComputePass() noexcept = default;
-    GpuComputePass(SDL_GPUCommandBuffer *command_buffer,
-        const SDL_GPUStorageTextureReadWriteBinding *storage_texture_bindings = nullptr,
-        Uint32 num_storage_texture_bindings = 0,
-        const SDL_GPUStorageBufferReadWriteBinding *storage_buffer_bindings = nullptr,
-        Uint32 num_storage_buffer_bindings = 0);
+    explicit GpuComputePass(SDL_GPUComputePass *compute_pass) noexcept;
     ~GpuComputePass();
 
     GpuComputePass(const GpuComputePass &) = delete;
@@ -22,12 +22,9 @@ public:
     GpuComputePass(GpuComputePass &&other) noexcept;
     GpuComputePass &operator=(GpuComputePass &&other) noexcept;
 
-    void begin(SDL_GPUCommandBuffer *command_buffer,
-        const SDL_GPUStorageTextureReadWriteBinding *storage_texture_bindings = nullptr,
-        Uint32 num_storage_texture_bindings = 0,
-        const SDL_GPUStorageBufferReadWriteBinding *storage_buffer_bindings = nullptr,
-        Uint32 num_storage_buffer_bindings = 0);
-    void end() noexcept;
+    void EndGPUComputePass() noexcept;
+    void BindGPUComputePipeline(const GpuComputePipeline &compute_pipeline);
+    void DispatchGPUCompute(Uint32 groupcount_x, Uint32 groupcount_y, Uint32 groupcount_z);
 
     [[nodiscard]] SDL_GPUComputePass *get() const noexcept
     {
