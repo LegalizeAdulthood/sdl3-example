@@ -24,12 +24,14 @@ The repository now has the foundation targets needed for the demo:
 
 * `sdlcpp` owns small RAII wrappers around SDL handles and SDL GPU
   handles.
+* `core` owns the Mandelbrot parameter block and CPU pixel
+  evaluator.
 * `wxsdl` owns `wxsdl::SdlCanvas`, a `wxWindow` that attaches an SDL
   window to the native wx widget on Win32, Cocoa, and GTK/X11.
 * `mandel` is a wxWidgets GUI executable.  Its main frame creates and
   lays out an `SdlCanvas`.
-* Unit tests cover the move-only wrapper shape and the `SdlCanvas`
-  inheritance contract.
+* Unit tests cover the move-only wrapper shape, `SdlCanvas` inheritance
+  contract, and CPU Mandelbrot behavior.
 
 Future Mandelbrot code should build on this structure.  Do not go back to
 a raw SDL-only application unless the wx host is deliberately removed.
@@ -58,19 +60,17 @@ there.
 
 ## Core Mandelbrot code
 
-Add Mandelbrot code to the existing `core` target.  Do not create a
-separate Mandelbrot library target.  Drop the stub `core.cpp` and
-`core.h` files when the new code is added.
+Mandelbrot code lives in the existing `core` target.  Do not create a
+separate Mandelbrot library target.  The stub `core.cpp` and `core.h`
+files have been dropped.
 
 `libs/core/CMakeLists.txt`:
 
 ```cmake
 add_library(core
+    include/core/MandelCpu.h
     include/core/MandelParams.h
-    include/core/MandelReference.h
-    include/core/Palette.h
-    MandelReference.cpp
-    Palette.cpp
+    MandelCpu.cpp
 )
 ```
 
@@ -129,24 +129,24 @@ MandelParams params{
 };
 ```
 
-## CPU reference API
+## CPU API
 
-`MandelReference.h`:
+`MandelCpu.h`:
 
 ```cpp
 #pragma once
 
-#include "core/MandelParams.h"
+#include <core/MandelParams.h>
 
 namespace core
 {
 
-int mandel_reference_pixel(const MandelParams& params, int px, int py);
+int mandel_cpu_pixel(const MandelParams& params, int px, int py);
 
 } // namespace core
 ```
 
-`MandelReference.cpp` should implement a straightforward Mandelbrot pixel
+`MandelCpu.cpp` implements a straightforward Mandelbrot pixel
 evaluator:
 
 1. map pixel coordinate to complex coordinate `c`,
@@ -414,53 +414,44 @@ UI.
 
 ## Implementation Slices
 
-### 1. CPU reference
-
-* Implement `MandelParams`.
-* Implement `mandel_reference_pixel`.
-* Add unit tests for a few known points:
-  * `c = 0 + 0i` should be inside.
-  * `c = 2 + 2i` should escape quickly.
-  * periodicity on/off should both produce valid bounded results.
-
-### 2. Canvas render host
+### 1. Canvas render host
 
 * Add a canvas-owned render controller or small frame-owned controller.
 * Drive rendering from wx paint, size, and timer events.
 * Keep mouse input in wx.
 * Use the existing `SdlCanvas` window; do not create a second SDL window.
 
-### 3. SDL3 GPU device
+### 2. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 4. Fullscreen triangle
+### 3. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 5. Compute output texture
+### 4. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 6. Mouse interaction
+### 5. Mouse interaction
 
 * Add mouse drag panning.
 * Add mouse wheel zoom.
 * Recompute parameters after mouse interaction.
 
-### 7. CPU/GPU comparison, optional
+### 6. CPU/GPU comparison, optional
 
 * Add texture readback.
-* Compare selected pixels against `mandel_reference_pixel`.
+* Compare selected pixels against `mandel_cpu_pixel`.
 * Keep this out of the default render path.
 
 ## CI
