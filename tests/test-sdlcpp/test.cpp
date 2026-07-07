@@ -35,31 +35,31 @@ public:
     template <typename T>
     static std::string GetName(int)
     {
-        if constexpr (std::is_same_v<T, core::sdl::Window>)
+        if constexpr (std::is_same_v<T, sdlcpp::Window>)
         {
             return "Window";
         }
-        else if constexpr (std::is_same_v<T, core::sdl::Properties>)
+        else if constexpr (std::is_same_v<T, sdlcpp::Properties>)
         {
             return "Properties";
         }
-        else if constexpr (std::is_same_v<T, core::sdl::GpuTexture>)
+        else if constexpr (std::is_same_v<T, sdlcpp::GpuTexture>)
         {
             return "GpuTexture";
         }
         else
         {
-            static_assert(std::is_same_v<T, core::sdl::GpuCommandBuffer>);
+            static_assert(std::is_same_v<T, sdlcpp::GpuCommandBuffer>);
             return "GpuCommandBuffer";
         }
     }
 };
 
 using SdlHandleTypes = ::testing::Types<
-    core::sdl::Window,
-    core::sdl::Properties,
-    core::sdl::GpuTexture,
-    core::sdl::GpuCommandBuffer>;
+    sdlcpp::Window,
+    sdlcpp::Properties,
+    sdlcpp::GpuTexture,
+    sdlcpp::GpuCommandBuffer>;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
     SdlHandles,

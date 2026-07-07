@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_gpu.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class GpuRenderPass
@@ -37,4 +37,4 @@ private:
     SDL_GPURenderPass *render_pass_ = nullptr;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

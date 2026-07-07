@@ -3,7 +3,7 @@
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_video.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 struct GpuSwapchainTexture
@@ -24,4 +24,4 @@ struct GpuSwapchainTexture
 [[nodiscard]] GpuSwapchainTexture wait_and_acquire_gpu_swapchain_texture(
     SDL_GPUCommandBuffer *command_buffer, SDL_Window *window);
 
-} // namespace core::sdl
+} // namespace sdlcpp

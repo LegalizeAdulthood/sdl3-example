@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_properties.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class Properties
@@ -43,4 +43,4 @@ private:
     SDL_PropertiesID properties_ = 0;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

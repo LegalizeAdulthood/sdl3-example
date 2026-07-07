@@ -2,9 +2,9 @@
 
 #include "sdlcpp/GpuHandle.h"
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 using GpuFence = GpuHandle<SDL_GPUFence, SDL_ReleaseGPUFence>;
 
-} // namespace core::sdl
+} // namespace sdlcpp

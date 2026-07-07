@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_gpu.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class GpuComputePass
@@ -43,4 +43,4 @@ private:
     SDL_GPUComputePass *compute_pass_ = nullptr;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

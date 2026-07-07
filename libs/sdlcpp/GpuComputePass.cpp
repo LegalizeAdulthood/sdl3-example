@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuComputePass::GpuComputePass(SDL_GPUCommandBuffer *command_buffer,
@@ -58,4 +58,4 @@ void GpuComputePass::end() noexcept
     }
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

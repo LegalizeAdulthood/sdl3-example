@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuCopyPass::GpuCopyPass(SDL_GPUCommandBuffer *command_buffer)
@@ -52,4 +52,4 @@ void GpuCopyPass::end() noexcept
     }
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

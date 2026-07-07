@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuComputePipeline make_gpu_compute_pipeline(SDL_GPUDevice *device, const SDL_GPUComputePipelineCreateInfo &create_info)
@@ -16,4 +16,4 @@ GpuComputePipeline make_gpu_compute_pipeline(SDL_GPUDevice *device, const SDL_GP
     return GpuComputePipeline(device, pipeline);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

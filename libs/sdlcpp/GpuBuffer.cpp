@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuBuffer make_gpu_buffer(SDL_GPUDevice *device, const SDL_GPUBufferCreateInfo &create_info)
@@ -16,4 +16,4 @@ GpuBuffer make_gpu_buffer(SDL_GPUDevice *device, const SDL_GPUBufferCreateInfo &
     return GpuBuffer(device, buffer);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

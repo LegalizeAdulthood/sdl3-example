@@ -4,7 +4,7 @@
 
 #include <string>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 [[nodiscard]] std::string error_message(const char *operation);
@@ -12,4 +12,4 @@ namespace core::sdl
 void check(bool ok, const char *operation);
 void require_pointer(const void *pointer, const char *name);
 
-} // namespace core::sdl
+} // namespace sdlcpp

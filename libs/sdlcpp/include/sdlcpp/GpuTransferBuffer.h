@@ -2,7 +2,7 @@
 
 #include "sdlcpp/GpuHandle.h"
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 using GpuTransferBuffer = GpuHandle<SDL_GPUTransferBuffer, SDL_ReleaseGPUTransferBuffer>;
@@ -10,4 +10,4 @@ using GpuTransferBuffer = GpuHandle<SDL_GPUTransferBuffer, SDL_ReleaseGPUTransfe
 [[nodiscard]] GpuTransferBuffer make_gpu_transfer_buffer(
     SDL_GPUDevice *device, const SDL_GPUTransferBufferCreateInfo &create_info);
 
-} // namespace core::sdl
+} // namespace sdlcpp

@@ -3,7 +3,7 @@
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_video.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class GpuWindowClaim
@@ -44,4 +44,4 @@ private:
 
 [[nodiscard]] GpuWindowClaim claim_window_for_gpu_device(SDL_GPUDevice *device, SDL_Window *window);
 
-} // namespace core::sdl
+} // namespace sdlcpp

@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 template <typename T, void(SDLCALL *Destroy)(T *)>
@@ -71,4 +71,4 @@ private:
     T *handle_ = nullptr;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

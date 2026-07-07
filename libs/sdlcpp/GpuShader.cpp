@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuShader make_gpu_shader(SDL_GPUDevice *device, const SDL_GPUShaderCreateInfo &create_info)
@@ -16,4 +16,4 @@ GpuShader make_gpu_shader(SDL_GPUDevice *device, const SDL_GPUShaderCreateInfo &
     return GpuShader(device, shader);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

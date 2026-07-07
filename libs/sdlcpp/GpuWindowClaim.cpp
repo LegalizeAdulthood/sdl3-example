@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuWindowClaim::GpuWindowClaim(SDL_GPUDevice *device, SDL_Window *window)
@@ -59,4 +59,4 @@ GpuWindowClaim claim_window_for_gpu_device(SDL_GPUDevice *device, SDL_Window *wi
     return GpuWindowClaim(device, window);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

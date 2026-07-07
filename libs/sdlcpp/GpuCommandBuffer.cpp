@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuCommandBuffer::GpuCommandBuffer(SDL_GPUDevice *device, SDL_GPUCommandBuffer *command_buffer) noexcept :
@@ -96,4 +96,4 @@ GpuCommandBuffer acquire_gpu_command_buffer(SDL_GPUDevice *device)
     return GpuCommandBuffer(device, command_buffer);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

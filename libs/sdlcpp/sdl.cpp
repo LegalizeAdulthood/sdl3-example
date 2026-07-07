@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 std::string error_message(const char *operation)
@@ -43,4 +43,4 @@ void require_pointer(const void *pointer, const char *name)
     }
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

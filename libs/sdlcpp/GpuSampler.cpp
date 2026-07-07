@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuSampler make_gpu_sampler(SDL_GPUDevice *device, const SDL_GPUSamplerCreateInfo &create_info)
@@ -16,4 +16,4 @@ GpuSampler make_gpu_sampler(SDL_GPUDevice *device, const SDL_GPUSamplerCreateInf
     return GpuSampler(device, sampler);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

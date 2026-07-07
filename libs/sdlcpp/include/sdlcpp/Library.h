@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_init.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class Library
@@ -28,4 +28,4 @@ private:
     bool initialized_ = false;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

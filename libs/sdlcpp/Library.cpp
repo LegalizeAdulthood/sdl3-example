@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 Library::Library(SDL_InitFlags flags)
@@ -42,4 +42,4 @@ void Library::reset() noexcept
     }
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

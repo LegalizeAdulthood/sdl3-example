@@ -4,7 +4,7 @@
 
 #include <SDL3/SDL_gpu.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class GpuCommandBuffer
@@ -50,4 +50,4 @@ private:
 
 [[nodiscard]] GpuCommandBuffer acquire_gpu_command_buffer(SDL_GPUDevice *device);
 
-} // namespace core::sdl
+} // namespace sdlcpp

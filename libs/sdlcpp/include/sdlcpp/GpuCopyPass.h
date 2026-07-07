@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_gpu.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 class GpuCopyPass
@@ -35,4 +35,4 @@ private:
     SDL_GPUCopyPass *copy_pass_ = nullptr;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 template <typename T, void(SDLCALL *Release)(SDL_GPUDevice *, T *)>
@@ -89,4 +89,4 @@ private:
     T *handle_ = nullptr;
 };
 
-} // namespace core::sdl
+} // namespace sdlcpp

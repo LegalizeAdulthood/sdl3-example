@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 Window make_window_from_properties(SDL_PropertiesID properties)
@@ -86,4 +86,4 @@ Window make_window_from_x11_window(std::uint64_t window, int width, int height, 
     return make_window_from_properties(properties);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

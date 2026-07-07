@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuGraphicsPipeline make_gpu_graphics_pipeline(
@@ -17,4 +17,4 @@ GpuGraphicsPipeline make_gpu_graphics_pipeline(
     return GpuGraphicsPipeline(device, pipeline);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

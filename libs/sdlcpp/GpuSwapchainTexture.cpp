@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuSwapchainTexture acquire_gpu_swapchain_texture(SDL_GPUCommandBuffer *command_buffer, SDL_Window *window)
@@ -29,4 +29,4 @@ GpuSwapchainTexture wait_and_acquire_gpu_swapchain_texture(SDL_GPUCommandBuffer 
     return swapchain_texture;
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

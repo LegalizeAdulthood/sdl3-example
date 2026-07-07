@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuRenderPass::GpuRenderPass(SDL_GPUCommandBuffer *command_buffer, const SDL_GPUColorTargetInfo *color_target_infos,
@@ -56,4 +56,4 @@ void GpuRenderPass::end() noexcept
     }
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

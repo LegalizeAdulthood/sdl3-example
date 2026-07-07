@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuTexture make_gpu_texture(SDL_GPUDevice *device, const SDL_GPUTextureCreateInfo &create_info)
@@ -16,4 +16,4 @@ GpuTexture make_gpu_texture(SDL_GPUDevice *device, const SDL_GPUTextureCreateInf
     return GpuTexture(device, texture);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

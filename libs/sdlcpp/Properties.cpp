@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 Properties::Properties(SDL_PropertiesID properties) noexcept :
@@ -76,4 +76,4 @@ void Properties::set_string(const char *name, const char *value)
     check(SDL_SetStringProperty(properties_, name, value), "SDL_SetStringProperty");
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp

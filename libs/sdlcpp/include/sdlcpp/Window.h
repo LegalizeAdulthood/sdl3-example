@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 using Window = Handle<SDL_Window, SDL_DestroyWindow>;
@@ -27,4 +27,4 @@ void set_wrapped_window_properties(Properties &properties, int width, int height
 [[nodiscard]] Window make_window_from_x11_window(
     std::uint64_t window, int width, int height, const char *title = nullptr);
 
-} // namespace core::sdl
+} // namespace sdlcpp

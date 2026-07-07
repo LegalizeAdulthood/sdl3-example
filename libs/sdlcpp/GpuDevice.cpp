@@ -2,7 +2,7 @@
 
 #include <sdlcpp/sdl.h>
 
-namespace core::sdl
+namespace sdlcpp
 {
 
 GpuDevice make_gpu_device(SDL_GPUShaderFormat format_flags, bool debug_mode, const char *name)
@@ -15,4 +15,4 @@ GpuDevice make_gpu_device(SDL_GPUShaderFormat format_flags, bool debug_mode, con
     return GpuDevice(device);
 }
 
-} // namespace core::sdl
+} // namespace sdlcpp
