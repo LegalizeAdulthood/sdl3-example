@@ -9,12 +9,14 @@ Build a small C++17 wxWidgets sample program that demonstrates SDL3 GPU
 API by:
 
 1. opening a wxWidgets frame,
-2. embedding an SDL-backed `wxsdl::SdlCanvas`,
-3. creating an SDL GPU device,
-4. dispatching a compute shader,
-5. writing Mandelbrot iteration counts into a GPU texture,
-6. displaying that texture through a simple graphics pipeline,
-7. controlling the Mandelbrot view with wx mouse events.
+2. rendering a CPU Mandelbrot image into a plain wx window first,
+3. embedding an SDL-backed `wxsdl::SdlCanvas` for GPU presentation,
+4. switching between CPU and GPU results from the menu,
+5. creating an SDL GPU device,
+6. dispatching a compute shader,
+7. writing Mandelbrot iteration counts into a GPU texture,
+8. displaying that texture through a simple graphics pipeline,
+9. controlling the Mandelbrot view with wx mouse events.
 
 The code should remain small enough to explain in one meeting.
 
@@ -207,7 +209,11 @@ This keeps the algorithm simple and GPU-friendly.
 find_package(SDL3 CONFIG REQUIRED)
 find_package(wxWidgets CONFIG REQUIRED)
 
-add_executable(mandel main.cpp)
+add_executable(mandel
+    MandelRenderHost.cpp
+    MandelRenderHost.h
+    main.cpp
+)
 set_target_properties(
     mandel
     PROPERTIES WIN32_EXECUTABLE "$<PLATFORM_ID:Windows>")
@@ -215,14 +221,60 @@ target_link_libraries(mandel PUBLIC core wxsdl)
 target_folder(mandel "Tools")
 ```
 
-The current tool is the wx application shell and render host.  Add shader
-targets when the GPU render path is introduced.  Keep SDL window access
-through `wxsdl::SdlCanvas::window()`.
+The current tool is the wx application shell and render host.  Add a
+plain wx window for CPU presentation before adding the GPU render path.
+Add shader targets when the GPU render path is introduced.  Keep SDL
+window access through `wxsdl::SdlCanvas::window()`.
+
+## Presentation model
+
+The frame should contain two separate display windows:
+
+```text
+plain wxWindow       CPU result
+wxsdl::SdlCanvas     GPU result
+```
+
+The CPU result is selected by default.  Render CPU iteration counts into
+a buffer, map those counts to colors in a `wxImage` or `wxBitmap`, and
+copy that image in the CPU display window's paint handler.
+
+Add a menu item that switches between CPU and GPU results.  Keep both
+display windows in the same frame and use Z order to choose the active
+presentation:
+
+```text
+CPU selected:  CPU wxWindow on top, GPU SdlCanvas behind it
+GPU selected:  CPU wxWindow behind it, GPU SdlCanvas on top
+```
+
+Do not mix CPU drawing into the SDL canvas, and do not use the GPU
+swapchain as the CPU display path.
+
+## CPU frame flow
+
+The initial visible path should be CPU-rendered.  The wx event loop
+drives the CPU display window.
+
+```text
+wx dispatches paint, size, timer, and mouse events
+
+if size or parameters changed:
+    render MandelCpu output into a CPU iteration buffer
+    map iteration counts to colors in a wxImage or wxBitmap
+
+paint CPU display window:
+    draw the wxImage or wxBitmap
+```
+
+Handle resize from wx size events.  Handle mouse input through wx mouse
+events on the active display window.  Do not add a raw SDL event loop.
 
 ## SDL3 GPU frame flow
 
 The runtime frame flow should be driven by the wx event loop.  The main
-frame owns the canvas and a small render host attached to the canvas.
+frame owns the canvas and a small render host attached to the display
+windows.
 
 ```text
 wx dispatches paint, size, timer, and mouse events
@@ -251,7 +303,8 @@ submit command buffer
 ```
 
 Handle resize from wx size events.  Handle mouse input through wx mouse
-events on the canvas.  Do not add a second raw SDL event loop.
+events on the active display window.  Do not add a second raw SDL event
+loop.
 
 ## Input ownership
 
@@ -261,10 +314,10 @@ or process SDL mouse events in the Mandelbrot tool.
 
 ## Texture strategy
 
-Start with a two-stage output path:
+Start with a two-stage output path on both CPU and GPU:
 
-1. compute shader writes raw iteration counts to an `R32_UINT` texture,
-2. fragment shader maps iteration count to color.
+1. Mandelbrot evaluation writes raw iteration counts,
+2. a separate presentation step maps iteration counts to color.
 
 This keeps the fractal math separate from palette display.
 
@@ -408,40 +461,63 @@ drag      pan
 wheel     zoom in/out
 ```
 
-Handle these through wx mouse events on the canvas.  Do not implement a
-full UI.  This is a graphics API sample, not a full fractal application
-UI.
+Handle these through wx mouse events on the active display window.  Do
+not implement a full UI.  This is a graphics API sample, not a full
+fractal application UI.
 
 ## Implementation Slices
 
-### 1. SDL3 GPU device
+### 1. CPU iteration buffer
+
+* Create a CPU iteration buffer type in `core`.
+* Render `MandelCpu` output into the iteration buffer.
+* Map iteration counts to colors in an image buffer.
+* Add unit tests for dimensions, selected iteration counts, and colors.
+
+### 2. wx CPU presentation
+
+* Add a plain wx window for CPU display.
+* Copy the color-mapped CPU image into a `wxImage` or `wxBitmap`.
+* Paint the CPU image in the CPU display window.
+* Recompute CPU output on resize.
+* Select CPU presentation by default.
+
+### 3. CPU/GPU presentation switch
+
+* Add a menu item that switches between CPU and GPU results.
+* Keep the CPU wx window and GPU `SdlCanvas` in the same frame.
+* Use Z order to select the active presentation window.
+* Bring the CPU window to the top for CPU presentation.
+* Bring the GPU `SdlCanvas` to the top for GPU presentation.
+
+### 4. Mouse interaction
+
+* Add mouse drag panning.
+* Add mouse wheel zoom.
+* Recompute CPU parameters and image after mouse interaction.
+
+### 5. SDL3 GPU device
 
 * Create the SDL GPU device with the existing `sdlcpp` wrappers.
 * Claim `SdlCanvas::window()` for the GPU device.
 * Acquire and submit an empty command buffer.
 * Clear the swapchain to verify presentation.
 
-### 2. Fullscreen triangle
+### 6. Fullscreen triangle
 
 * Add `blit.vert.hlsl`.
 * Add `blit.frag.hlsl`.
 * Create a graphics pipeline.
 * Draw a fullscreen triangle.
 
-### 3. Compute output texture
+### 7. Compute output texture
 
 * Create an `R32_UINT` texture with compute storage usage.
 * Create the Mandelbrot compute pipeline.
 * Dispatch `ceil(width / 16), ceil(height / 16), 1`.
 * Display the result through the fragment shader.
 
-### 4. Mouse interaction
-
-* Add mouse drag panning.
-* Add mouse wheel zoom.
-* Recompute parameters after mouse interaction.
-
-### 5. CPU/GPU comparison, optional
+### 8. CPU/GPU comparison, optional
 
 * Add texture readback.
 * Compare selected pixels against `mandel_cpu_pixel`.
@@ -507,19 +583,21 @@ Use this structure:
 2. How it differs from SDL_Renderer.
 3. How it resembles Vulkan/D3D12/Metal.
 4. CPU Mandelbrot reference.
-5. First compute shader.
-6. Compute-to-texture path.
-7. Presenting the texture.
-8. Mouse-driven navigation.
-9. Practical vcpkg/CMake/wxWidgets/shadercross issues.
-10. Where SDL3 GPU is useful and where it is not.
+5. CPU image presentation in wx.
+6. Switching between CPU and GPU displays.
+7. First compute shader.
+8. Compute-to-texture path.
+9. Mouse-driven navigation.
+10. Practical vcpkg/CMake/wxWidgets/shadercross issues.
+11. Where SDL3 GPU is useful and where it is not.
 
 ## Done
 
 The sample is complete when:
 
 ```text
-The program opens a wx frame with an SdlCanvas, dispatches a Mandelbrot
-compute shader, writes iteration counts into an R32_UINT texture,
-displays the result, and lets the user pan and zoom with the mouse.
+The program opens a wx frame with separate CPU and GPU display windows,
+shows the CPU Mandelbrot result by default, can switch to the GPU
+Mandelbrot result from the menu, and lets the user pan and zoom with the
+mouse.
 ```
