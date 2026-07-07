@@ -482,14 +482,6 @@ Handle these through wx mouse events on the active display window.  Do
 not implement a full UI.  This is a graphics API sample, not a full
 fractal application UI.
 
-## Implementation Slices
-
-### 1. CPU/GPU comparison, optional
-
-* Add texture readback.
-* Compare selected pixels against `mandel_cpu_pixel`.
-* Keep this out of the default render path.
-
 ## CI
 
 Keep CI simple.
