@@ -4,6 +4,8 @@
 #include <core/MandelViewport.h>
 
 #include <sdlcpp/GpuDevice.h>
+#include <sdlcpp/GpuGraphicsPipeline.h>
+#include <sdlcpp/GpuShader.h>
 #include <sdlcpp/GpuWindowClaim.h>
 #include <wxsdl/SdlCanvas.h>
 
@@ -61,6 +63,9 @@ private:
     Presentation m_presentation = Presentation::Cpu;
     sdlcpp::GpuDevice m_gpuDevice;
     sdlcpp::GpuWindowClaim m_gpuWindow;
+    sdlcpp::GpuShader m_blitVertexShader;
+    sdlcpp::GpuShader m_blitFragmentShader;
+    sdlcpp::GpuGraphicsPipeline m_blitPipeline;
     wxWindow *m_mouseCapture = nullptr;
     wxPoint m_lastMousePosition;
     wxTimer m_timer;

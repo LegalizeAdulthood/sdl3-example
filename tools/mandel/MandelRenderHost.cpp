@@ -6,18 +6,24 @@
 #include <core/MandelImage.h>
 
 #include <sdlcpp/GpuCommandBuffer.h>
+#include <sdlcpp/GpuGraphicsPipeline.h>
 #include <sdlcpp/GpuRenderPass.h>
+#include <sdlcpp/GpuShader.h>
 #include <sdlcpp/GpuSwapchainTexture.h>
+#include <sdlcpp/sdl.h>
 
 #include <wx/dcclient.h>
 #include <wx/event.h>
 #include <wx/image.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <fstream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace mandel
 {
@@ -31,6 +37,19 @@ constexpr SDL_GPUShaderFormat gpu_shader_formats =
     SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL;
 
 constexpr SDL_FColor gpu_clear_color{0.0f, 1.0f, 0.0f, 1.0f};
+
+struct ShaderAssetFormat
+{
+    SDL_GPUShaderFormat format;
+    const char *extension;
+    const char *entrypoint;
+};
+
+constexpr std::array shader_asset_formats{
+    ShaderAssetFormat{SDL_GPU_SHADERFORMAT_DXIL, ".dxil", "main"},
+    ShaderAssetFormat{SDL_GPU_SHADERFORMAT_MSL, ".msl", "main0"},
+    ShaderAssetFormat{SDL_GPU_SHADERFORMAT_SPIRV, ".spv", "main"},
+};
 
 wxWindow *event_window(wxEvent &event)
 {
@@ -53,6 +72,68 @@ core::MandelPalette load_chroma_palette()
     }
 
     return palette;
+}
+
+const ShaderAssetFormat &shader_asset_format(SDL_GPUDevice *device)
+{
+    const SDL_GPUShaderFormat supported_formats = SDL_GetGPUShaderFormats(device);
+    for (const auto &asset_format : shader_asset_formats)
+    {
+        if ((supported_formats & asset_format.format) != 0)
+        {
+            return asset_format;
+        }
+    }
+
+    throw std::runtime_error("No matching static shader asset format for SDL GPU backend");
+}
+
+std::vector<Uint8> read_shader_code(const std::string &path)
+{
+    std::ifstream input(path, std::ios::binary);
+    if (!input)
+    {
+        throw std::runtime_error("Unable to open shader asset " + path);
+    }
+
+    const std::string code{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    return std::vector<Uint8>{code.begin(), code.end()};
+}
+
+sdlcpp::GpuShader load_graphics_shader(SDL_GPUDevice *device, const char *asset_name, SDL_GPUShaderStage stage)
+{
+    const auto &asset_format = shader_asset_format(device);
+    const auto path = std::string{assets_dir} + "/" + asset_name + asset_format.extension;
+    const auto code = read_shader_code(path);
+
+    SDL_GPUShaderCreateInfo create_info{};
+    create_info.code_size = code.size();
+    create_info.code = code.data();
+    create_info.entrypoint = asset_format.entrypoint;
+    create_info.format = asset_format.format;
+    create_info.stage = stage;
+
+    return sdlcpp::make_gpu_shader(device, create_info);
+}
+
+sdlcpp::GpuGraphicsPipeline make_blit_pipeline(
+    SDL_GPUDevice *device, SDL_Window *window, SDL_GPUShader *vertex_shader, SDL_GPUShader *fragment_shader)
+{
+    SDL_GPUColorTargetDescription color_target_description{};
+    color_target_description.format = SDL_GetGPUSwapchainTextureFormat(device, window);
+
+    SDL_GPUGraphicsPipelineCreateInfo create_info{};
+    create_info.vertex_shader = vertex_shader;
+    create_info.fragment_shader = fragment_shader;
+    create_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    create_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    create_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
+    create_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
+    create_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    create_info.target_info.color_target_descriptions = &color_target_description;
+    create_info.target_info.num_color_targets = 1;
+
+    return sdlcpp::make_gpu_graphics_pipeline(device, create_info);
 }
 
 std::size_t pixel_index(int width, int px, int py)
@@ -89,6 +170,10 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_palette(load_chroma_palette()),
     m_gpuDevice(sdlcpp::make_gpu_device(gpu_shader_formats)),
     m_gpuWindow(sdlcpp::claim_window_for_gpu_device(m_gpuDevice.get(), m_canvas.window().get())),
+    m_blitVertexShader(load_graphics_shader(m_gpuDevice.get(), "blit.vert", SDL_GPU_SHADERSTAGE_VERTEX)),
+    m_blitFragmentShader(load_graphics_shader(m_gpuDevice.get(), "blit.frag", SDL_GPU_SHADERSTAGE_FRAGMENT)),
+    m_blitPipeline(make_blit_pipeline(
+        m_gpuDevice.get(), m_canvas.window().get(), m_blitVertexShader.get(), m_blitFragmentShader.get())),
     m_timer(&frame)
 {
     m_cpuDisplay.SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -213,6 +298,8 @@ void MandelRenderHost::RenderGpuFrame()
         const SDL_GPUColorTargetInfo target_info{swapchain_texture.texture, 0, 0, gpu_clear_color, SDL_GPU_LOADOP_CLEAR,
             SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
         sdlcpp::GpuRenderPass render_pass(command_buffer.get(), &target_info, 1);
+        SDL_BindGPUGraphicsPipeline(render_pass.get(), m_blitPipeline.get());
+        SDL_DrawGPUPrimitives(render_pass.get(), 3, 1, 0, 0);
     }
 
     command_buffer.submit();

@@ -26,3 +26,11 @@ add_test(
         --build "${CMAKE_BINARY_DIR}"
         --target test-dxc
         --config "$<CONFIG>")
+
+add_test(
+    NAME MandelShaders.compile_assets
+    COMMAND
+        "${CMAKE_COMMAND}"
+        --build "${CMAKE_BINARY_DIR}"
+        --target mandel-shaders
+        --config "$<CONFIG>")
