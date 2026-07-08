@@ -42,6 +42,7 @@ TEST(MandelIterationBuffer, StoresSelectedIterationCounts)
     const auto params = two_point_params();
     const auto buffer = core::render_mandel_cpu(params);
 
-    EXPECT_EQ(params.max_iterations, buffer.iterations[0]);
-    EXPECT_EQ(1, buffer.iterations[1]);
+    EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), buffer.iterations[0]);
+    EXPECT_GT(buffer.iterations[1], 1.0f);
+    EXPECT_LT(buffer.iterations[1], 2.0f);
 }

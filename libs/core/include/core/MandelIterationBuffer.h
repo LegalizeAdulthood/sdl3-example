@@ -9,7 +9,7 @@ struct MandelIterationBuffer
 {
     int width = 0;
     int height = 0;
-    std::vector<int> iterations;
+    std::vector<float> iterations;
 };
 
 } // namespace core

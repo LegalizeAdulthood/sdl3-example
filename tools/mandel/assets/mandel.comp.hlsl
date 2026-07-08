@@ -6,8 +6,19 @@ struct MandelParams
     int4 periodicity;
 };
 
-RWTexture2D<uint> output_tex : register(u0, space1);
+RWTexture2D<float> output_tex : register(u0, space1);
 ConstantBuffer<MandelParams> params : register(b0, space2);
+
+float continuous_iteration(int iter, float norm)
+{
+    float log_radius = log(sqrt(norm));
+    if (log_radius <= 0.0)
+    {
+        return float(iter);
+    }
+
+    return max(float(iter) + 1.0 - log2(log_radius), 0.0);
+}
 
 [numthreads(16, 16, 1)] void main(uint3 tid : SV_DispatchThreadID)
 {
@@ -35,9 +46,10 @@ ConstantBuffer<MandelParams> params : register(b0, space2);
         x = x2 - y2 + cx;
         y = 2.0 * xy + cy;
 
-        if (x * x + y * y >= params.constants.z)
+        float norm = x * x + y * y;
+        if (norm >= params.constants.z)
         {
-            output_tex[tid.xy] = uint(iter);
+            output_tex[tid.xy] = continuous_iteration(iter, norm);
             return;
         }
 
@@ -57,11 +69,11 @@ ConstantBuffer<MandelParams> params : register(b0, space2);
             }
             else if (abs(saved_x - x) < params.constants.w && abs(saved_y - y) < params.constants.w)
             {
-                output_tex[tid.xy] = uint(params.image.z);
+                output_tex[tid.xy] = float(params.image.z);
                 return;
             }
         }
     }
 
-    output_tex[tid.xy] = uint(params.image.z);
+    output_tex[tid.xy] = float(params.image.z);
 }

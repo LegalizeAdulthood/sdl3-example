@@ -16,9 +16,21 @@ std::size_t pixel_index(int width, int px, int py)
     return static_cast<std::size_t>(py) * static_cast<std::size_t>(width) + static_cast<std::size_t>(px);
 }
 
+float continuous_iteration(int iter, double norm)
+{
+    const double log_radius = std::log(std::sqrt(norm));
+    if (log_radius <= 0.0)
+    {
+        return static_cast<float>(iter);
+    }
+
+    const double smooth_iter = static_cast<double>(iter) + 1.0 - std::log(log_radius) / std::log(2.0);
+    return static_cast<float>(std::max(0.0, smooth_iter));
+}
+
 } // namespace
 
-int mandel_cpu_pixel(const MandelParams &params, int px, int py)
+float mandel_cpu_pixel(const MandelParams &params, int px, int py)
 {
     const double cx = params.x_min + static_cast<double>(px) * params.dx;
     const double cy = params.y_min + static_cast<double>(py) * params.dy;
@@ -39,9 +51,10 @@ int mandel_cpu_pixel(const MandelParams &params, int px, int py)
         x = x2 - y2 + cx;
         y = 2.0 * xy + cy;
 
-        if (x * x + y * y >= params.bailout)
+        const double norm = x * x + y * y;
+        if (norm >= params.bailout)
         {
-            return iter;
+            return continuous_iteration(iter, norm);
         }
 
         if (params.periodicity_check != 0)
@@ -60,12 +73,12 @@ int mandel_cpu_pixel(const MandelParams &params, int px, int py)
             }
             else if (std::abs(saved_x - x) < params.close_enough && std::abs(saved_y - y) < params.close_enough)
             {
-                return params.max_iterations;
+                return static_cast<float>(params.max_iterations);
             }
         }
     }
 
-    return params.max_iterations;
+    return static_cast<float>(params.max_iterations);
 }
 
 MandelIterationBuffer render_mandel_cpu(const MandelParams &params)
@@ -73,7 +86,7 @@ MandelIterationBuffer render_mandel_cpu(const MandelParams &params)
     const int width = std::max(params.width, 0);
     const int height = std::max(params.height, 0);
     MandelIterationBuffer buffer{
-        width, height, std::vector<int>(static_cast<std::size_t>(width) * static_cast<std::size_t>(height))};
+        width, height, std::vector<float>(static_cast<std::size_t>(width) * static_cast<std::size_t>(height))};
 
     for (int py = 0; py < height; ++py)
     {

@@ -31,24 +31,27 @@ TEST(MandelCpu, OriginIsInside)
 {
     const auto params = point_params(0.0, 0.0);
 
-    EXPECT_EQ(params.max_iterations, core::mandel_cpu_pixel(params, 0, 0));
+    EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), core::mandel_cpu_pixel(params, 0, 0));
 }
 
 TEST(MandelCpu, FarPointEscapesQuickly)
 {
     const auto params = point_params(2.0, 2.0);
 
-    EXPECT_EQ(1, core::mandel_cpu_pixel(params, 0, 0));
+    const float iteration = core::mandel_cpu_pixel(params, 0, 0);
+
+    EXPECT_GT(iteration, 0.0f);
+    EXPECT_LT(iteration, 1.0f);
 }
 
 TEST(MandelCpu, PeriodicityOnAndOffStayBounded)
 {
     auto params = point_params(0.0, 0.0);
-    const int with_periodicity = core::mandel_cpu_pixel(params, 0, 0);
+    const float with_periodicity = core::mandel_cpu_pixel(params, 0, 0);
 
     params.periodicity_check = 0;
-    const int without_periodicity = core::mandel_cpu_pixel(params, 0, 0);
+    const float without_periodicity = core::mandel_cpu_pixel(params, 0, 0);
 
-    EXPECT_EQ(params.max_iterations, with_periodicity);
-    EXPECT_EQ(params.max_iterations, without_periodicity);
+    EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), with_periodicity);
+    EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), without_periodicity);
 }

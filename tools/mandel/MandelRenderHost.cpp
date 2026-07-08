@@ -62,7 +62,7 @@ struct alignas(16) GpuMandelParams
 
 struct alignas(16) GpuBlitParams
 {
-    Uint32 max_iterations;
+    float max_iterations;
     Uint32 palette_size;
     Uint32 padding[2];
 };
@@ -191,7 +191,7 @@ GpuMandelParams make_gpu_mandel_params(const core::MandelParams &params)
 GpuBlitParams make_gpu_blit_params(const core::MandelParams &params, const core::MandelPalette &palette)
 {
     GpuBlitParams gpu_params{};
-    gpu_params.max_iterations = static_cast<Uint32>(params.max_iterations);
+    gpu_params.max_iterations = static_cast<float>(params.max_iterations);
     gpu_params.palette_size = static_cast<Uint32>(palette.colors.size());
     return gpu_params;
 }
@@ -237,7 +237,7 @@ sdlcpp::GpuTexture make_iteration_texture(const sdlcpp::GpuDevice &device, const
 {
     SDL_GPUTextureCreateInfo create_info{};
     create_info.type = SDL_GPU_TEXTURETYPE_2D;
-    create_info.format = SDL_GPU_TEXTUREFORMAT_R32_UINT;
+    create_info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
     create_info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ;
     create_info.width = static_cast<Uint32>(size.GetWidth());
     create_info.height = static_cast<Uint32>(size.GetHeight());

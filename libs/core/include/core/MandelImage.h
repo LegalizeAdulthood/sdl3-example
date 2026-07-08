@@ -30,8 +30,8 @@ struct MandelPalette
 };
 
 MandelPalette read_mandel_palette(std::istream &input);
-Rgba8 mandel_color(int iteration, int max_iterations);
-Rgba8 mandel_color(int iteration, int max_iterations, const MandelPalette &palette);
+Rgba8 mandel_color(float iteration, int max_iterations);
+Rgba8 mandel_color(float iteration, int max_iterations, const MandelPalette &palette);
 MandelImage map_mandel_colors(const MandelIterationBuffer &buffer, int max_iterations);
 MandelImage map_mandel_colors(const MandelIterationBuffer &buffer, int max_iterations, const MandelPalette &palette);
 
