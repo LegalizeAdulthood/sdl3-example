@@ -490,16 +490,7 @@ procedural mesh: the vertex shader derives grid coordinates from
 
 Implement this in small slices.
 
-### 1. Height-field graphics pipeline
-
-Add a height-field graphics pipeline to `MandelRenderHost`.  Reuse the
-compute pass that fills the current iteration texture, then bind that
-texture in the vertex stage and draw the procedural grid.  Add a depth
-texture if the first view needs proper hidden-surface ordering.  Push a
-height-field camera uniform block containing the world-to-clip matrix,
-source texture size, grid size, max iteration count, and height scale.
-
-### 2. Height Field view mode and orbit camera
+### 1. Height Field view mode and orbit camera
 
 Add a `Height Field` item to the View menu beside the existing CPU and
 GPU choices.  Selecting it should show the SDL canvas, render the current

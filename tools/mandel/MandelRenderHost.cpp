@@ -22,6 +22,7 @@
 #include <wx/event.h>
 #include <wx/image.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -43,7 +44,14 @@ constexpr SDL_GPUShaderFormat gpu_shader_formats =
     SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL;
 
 constexpr Uint32 mandel_workgroup_size = 16;
+constexpr Uint32 height_grid_max_width = 192;
+constexpr Uint32 height_grid_max_height = 144;
+constexpr float height_scale = 0.55f;
+constexpr SDL_GPUTextureFormat height_depth_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
 constexpr SDL_FColor gpu_clear_color{0.0f, 1.0f, 0.0f, 1.0f};
+
+constexpr std::array<float, 16> initial_height_world_to_clip{
+    0.58f, 0.30f, -0.04f, 0.0f, 0.0f, 0.62f, -0.16f, 0.0f, 0.35f, -0.18f, 0.12f, 0.0f, 0.0f, -0.25f, 0.60f, 1.0f};
 
 struct ShaderAssetFormat
 {
@@ -65,6 +73,22 @@ struct alignas(16) GpuBlitParams
     float max_iterations;
     Uint32 palette_size;
     Uint32 padding[2];
+};
+
+struct alignas(16) GpuHeightParams
+{
+    float world_to_clip[16];
+    Uint32 texture_size[2];
+    Uint32 grid_size[2];
+    float max_iterations;
+    float height_scale;
+    float padding[2];
+};
+
+struct HeightGridSize
+{
+    Uint32 width;
+    Uint32 height;
 };
 
 constexpr std::array shader_asset_formats{
@@ -196,6 +220,33 @@ GpuBlitParams make_gpu_blit_params(const core::MandelParams &params, const core:
     return gpu_params;
 }
 
+HeightGridSize make_height_grid_size(const wxSize &size)
+{
+    const int grid_width = std::clamp(size.GetWidth() / 4, 2, static_cast<int>(height_grid_max_width));
+    const int grid_height = std::clamp(size.GetHeight() / 4, 2, static_cast<int>(height_grid_max_height));
+    return HeightGridSize{static_cast<Uint32>(grid_width), static_cast<Uint32>(grid_height)};
+}
+
+Uint32 height_field_vertex_count(HeightGridSize grid_size)
+{
+    return (grid_size.width - 1) * (grid_size.height - 1) * 6;
+}
+
+GpuHeightParams make_gpu_height_params(const core::MandelParams &params, const wxSize &size)
+{
+    const auto grid_size = make_height_grid_size(size);
+
+    GpuHeightParams gpu_params{};
+    std::copy(initial_height_world_to_clip.begin(), initial_height_world_to_clip.end(), gpu_params.world_to_clip);
+    gpu_params.texture_size[0] = static_cast<Uint32>(std::max(size.GetWidth(), 1));
+    gpu_params.texture_size[1] = static_cast<Uint32>(std::max(size.GetHeight(), 1));
+    gpu_params.grid_size[0] = grid_size.width;
+    gpu_params.grid_size[1] = grid_size.height;
+    gpu_params.max_iterations = static_cast<float>(params.max_iterations);
+    gpu_params.height_scale = height_scale;
+    return gpu_params;
+}
+
 Uint32 pack_palette_color(const core::Rgba8 &color)
 {
     return static_cast<Uint32>(color.red) | (static_cast<Uint32>(color.green) << 8) |
@@ -248,6 +299,21 @@ sdlcpp::GpuTexture make_iteration_texture(const sdlcpp::GpuDevice &device, const
     return device.CreateGPUTexture(create_info);
 }
 
+sdlcpp::GpuTexture make_height_depth_texture(const sdlcpp::GpuDevice &device, const wxSize &size)
+{
+    SDL_GPUTextureCreateInfo create_info{};
+    create_info.type = SDL_GPU_TEXTURETYPE_2D;
+    create_info.format = height_depth_format;
+    create_info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+    create_info.width = static_cast<Uint32>(size.GetWidth());
+    create_info.height = static_cast<Uint32>(size.GetHeight());
+    create_info.layer_count_or_depth = 1;
+    create_info.num_levels = 1;
+    create_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+
+    return device.CreateGPUTexture(create_info);
+}
+
 sdlcpp::GpuGraphicsPipeline make_blit_pipeline(
     const sdlcpp::GpuDevice &device, SDL_Window *window, SDL_GPUShader *vertex_shader, SDL_GPUShader *fragment_shader)
 {
@@ -264,6 +330,31 @@ sdlcpp::GpuGraphicsPipeline make_blit_pipeline(
     create_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
     create_info.target_info.color_target_descriptions = &color_target_description;
     create_info.target_info.num_color_targets = 1;
+
+    return device.CreateGPUGraphicsPipeline(create_info);
+}
+
+sdlcpp::GpuGraphicsPipeline make_height_pipeline(
+    const sdlcpp::GpuDevice &device, SDL_Window *window, SDL_GPUShader *vertex_shader, SDL_GPUShader *fragment_shader)
+{
+    SDL_GPUColorTargetDescription color_target_description{};
+    color_target_description.format = device.GetGPUSwapchainTextureFormat(window);
+
+    SDL_GPUGraphicsPipelineCreateInfo create_info{};
+    create_info.vertex_shader = vertex_shader;
+    create_info.fragment_shader = fragment_shader;
+    create_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    create_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    create_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
+    create_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
+    create_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    create_info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
+    create_info.depth_stencil_state.enable_depth_test = true;
+    create_info.depth_stencil_state.enable_depth_write = true;
+    create_info.target_info.color_target_descriptions = &color_target_description;
+    create_info.target_info.num_color_targets = 1;
+    create_info.target_info.depth_stencil_format = height_depth_format;
+    create_info.target_info.has_depth_stencil_target = true;
 
     return device.CreateGPUGraphicsPipeline(create_info);
 }
@@ -307,6 +398,10 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_blitFragmentShader(load_graphics_shader(m_gpuDevice, "blit.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1, 1)),
     m_blitPipeline(
         make_blit_pipeline(m_gpuDevice, m_canvas.window().get(), m_blitVertexShader.get(), m_blitFragmentShader.get())),
+    m_heightVertexShader(load_graphics_shader(m_gpuDevice, "height.vert", SDL_GPU_SHADERSTAGE_VERTEX, 1, 0, 1)),
+    m_heightFragmentShader(load_graphics_shader(m_gpuDevice, "height.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 1, 1)),
+    m_heightPipeline(make_height_pipeline(
+        m_gpuDevice, m_canvas.window().get(), m_heightVertexShader.get(), m_heightFragmentShader.get())),
     m_paletteBuffer(make_palette_buffer(m_gpuDevice, m_palette)),
     m_timer(&frame)
 {
@@ -366,6 +461,17 @@ void MandelRenderHost::EnsureGpuTexture(const wxSize &size)
     m_iterationTexture = make_iteration_texture(m_gpuDevice, size);
     m_gpuTextureSize = size;
     m_gpuDirty = true;
+}
+
+void MandelRenderHost::EnsureHeightDepthTexture(const wxSize &size)
+{
+    if (m_heightDepthTexture && m_heightDepthTextureSize == size)
+    {
+        return;
+    }
+
+    m_heightDepthTexture = make_height_depth_texture(m_gpuDevice, size);
+    m_heightDepthTextureSize = size;
 }
 
 void MandelRenderHost::RefreshActiveDisplay()
@@ -451,6 +557,50 @@ void MandelRenderHost::RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, 
     compute_pass.DispatchGPUCompute(ceil_div(static_cast<Uint32>(size.GetWidth()), mandel_workgroup_size),
         ceil_div(static_cast<Uint32>(size.GetHeight()), mandel_workgroup_size), 1);
     m_gpuDirty = false;
+}
+
+void MandelRenderHost::RenderHeightField(
+    sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass, const wxSize &size)
+{
+    const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
+    const auto height_params = make_gpu_height_params(params, size);
+    const auto blit_params = make_gpu_blit_params(params, m_palette);
+    const auto grid_size = make_height_grid_size(size);
+
+    command_buffer.PushGPUVertexUniformData(0, &height_params, sizeof(height_params));
+    command_buffer.PushGPUFragmentUniformData(0, &blit_params, sizeof(blit_params));
+    render_pass.BindGPUGraphicsPipeline(m_heightPipeline);
+    render_pass.BindGPUVertexStorageTextures(0, m_iterationTexture);
+    render_pass.BindGPUFragmentStorageBuffers(0, m_paletteBuffer);
+    render_pass.DrawGPUPrimitives(height_field_vertex_count(grid_size), 1, 0, 0);
+}
+
+void MandelRenderHost::RenderHeightFieldFrame()
+{
+    const wxSize size = m_canvas.GetClientSize();
+    if (size.GetWidth() <= 0 || size.GetHeight() <= 0)
+    {
+        return;
+    }
+
+    EnsureGpuTexture(size);
+    EnsureHeightDepthTexture(size);
+
+    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    RenderGpuImage(command_buffer, size);
+    const auto swapchain_texture = command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
+
+    if (swapchain_texture)
+    {
+        const SDL_GPUColorTargetInfo target_info{swapchain_texture.texture, 0, 0, gpu_clear_color, SDL_GPU_LOADOP_CLEAR,
+            SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
+        const SDL_GPUDepthStencilTargetInfo depth_info{m_heightDepthTexture.get(), 1.0f, SDL_GPU_LOADOP_CLEAR,
+            SDL_GPU_STOREOP_DONT_CARE, SDL_GPU_LOADOP_DONT_CARE, SDL_GPU_STOREOP_DONT_CARE, true, 0, 0, 0};
+        auto render_pass = command_buffer.BeginGPURenderPass(&target_info, 1, &depth_info);
+        RenderHeightField(command_buffer, render_pass, size);
+    }
+
+    command_buffer.SubmitGPUCommandBuffer();
 }
 
 void MandelRenderHost::RenderGpuFrame()

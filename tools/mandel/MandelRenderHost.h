@@ -42,8 +42,12 @@ private:
     [[nodiscard]] wxSize DisplaySize() const;
     void InvalidateRender();
     void EnsureGpuTexture(const wxSize &size);
+    void EnsureHeightDepthTexture(const wxSize &size);
     void LayoutDisplays();
     void RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, const wxSize &size);
+    void RenderHeightField(sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass,
+        const wxSize &size);
+    void RenderHeightFieldFrame();
     void RefreshActiveDisplay();
     void RenderGpuFrame();
     void RenderCpuImage();
@@ -73,9 +77,14 @@ private:
     sdlcpp::GpuShader m_blitVertexShader;
     sdlcpp::GpuShader m_blitFragmentShader;
     sdlcpp::GpuGraphicsPipeline m_blitPipeline;
+    sdlcpp::GpuShader m_heightVertexShader;
+    sdlcpp::GpuShader m_heightFragmentShader;
+    sdlcpp::GpuGraphicsPipeline m_heightPipeline;
     sdlcpp::GpuBuffer m_paletteBuffer;
     sdlcpp::GpuTexture m_iterationTexture;
+    sdlcpp::GpuTexture m_heightDepthTexture;
     wxSize m_gpuTextureSize;
+    wxSize m_heightDepthTextureSize;
     wxWindow *m_mouseCapture = nullptr;
     wxPoint m_lastMousePosition;
     wxTimer m_timer;
