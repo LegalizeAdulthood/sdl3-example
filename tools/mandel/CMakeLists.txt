@@ -17,6 +17,8 @@ configure_file(assets.h.in assets.h @ONLY)
 set_source_files_properties(
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.frag.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.vert.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.frag.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.vert.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
     PROPERTIES HEADER_FILE_ONLY ON)
 source_group(
@@ -61,6 +63,16 @@ add_mandel_shader_assets(
     blit.frag
     fragment)
 add_mandel_shader_assets(
+    height_vertex_shader_assets
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.vert.hlsl"
+    height.vert
+    vertex)
+add_mandel_shader_assets(
+    height_fragment_shader_assets
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.frag.hlsl"
+    height.frag
+    fragment)
+add_mandel_shader_assets(
     mandel_compute_shader_assets
     "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
     mandel.comp
@@ -71,6 +83,8 @@ add_custom_target(
     DEPENDS
         ${blit_vertex_shader_assets}
         ${blit_fragment_shader_assets}
+        ${height_vertex_shader_assets}
+        ${height_fragment_shader_assets}
         ${mandel_compute_shader_assets})
 target_folder(mandel-shaders "Tools")
 
@@ -78,6 +92,8 @@ add_executable(mandel
     "${CMAKE_CURRENT_BINARY_DIR}/assets.h"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.frag.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/blit.vert.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.frag.hlsl"
+    "${MANDEL_ASSETS_SOURCE_DIR}/height.vert.hlsl"
     "${MANDEL_ASSETS_SOURCE_DIR}/mandel.comp.hlsl"
     MandelRenderHost.cpp
     MandelRenderHost.h

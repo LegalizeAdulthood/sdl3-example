@@ -370,6 +370,12 @@ blit.vert.msl
 blit.frag.dxil
 blit.frag.spv
 blit.frag.msl
+height.vert.dxil
+height.vert.spv
+height.vert.msl
+height.frag.dxil
+height.frag.spv
+height.frag.msl
 mandel.comp.dxil
 mandel.comp.spv
 mandel.comp.msl
@@ -481,20 +487,14 @@ procedural mesh: the vertex shader derives grid coordinates from
 
 Implement this in small slices.
 
-### 1. Shadercross asset generation
-
-Wire the height-field shaders into the shadercross asset generation.
-Keep them fixed build-time assets like the current blit and compute
-shaders, and extend the shader asset compile test to include them.
-
-### 2. Height-field graphics pipeline
+### 1. Height-field graphics pipeline
 
 Add a height-field graphics pipeline to `MandelRenderHost`.  Reuse the
 compute pass that fills the iteration texture, then bind that texture in
 the vertex stage and draw the procedural grid.  Add a depth texture if
 the first view needs proper hidden-surface ordering.
 
-### 3. GPU presentation mode switch
+### 2. GPU presentation mode switch
 
 Add a simple GPU presentation mode switch for flat texture vs
 height-field mesh.  Keep CPU presentation selected by default, keep input
