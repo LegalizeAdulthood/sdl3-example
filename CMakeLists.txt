@@ -23,8 +23,11 @@ if(BUILD_TESTING)
 endif()
 
 misc_target(FILES
-    "CMakePresets.json"
-    "ReadMe.md")
+    "CMakePresets.json")
+misc_group_sources("Documentation" FILES
+    "ReadMe.md"
+    "plan.md"
+    "shadercross.md")
 misc_group_sources("CMake Scripts" FILES
     "cmake/misc_target.cmake"
     "cmake/set_cxx_standard.cmake"
