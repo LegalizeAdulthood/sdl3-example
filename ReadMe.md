@@ -4,6 +4,10 @@
 
 Sample code for the video Modern GPU Programming with SDL3
 
+See also:
+* [GPU category](https://wiki.libsdl.org/SDL3/CategoryGPU) in the SDL3 documentation
+* [GPU C examples](https://github.com/TheSpydog/SDL_gpu_examples) on github
+
 # Obtaining the Source
 
 Use git to clone this repository, then update the vcpkg submodule to bootstrap
