@@ -29,12 +29,14 @@ public:
 
     void SelectCpuPresentation();
     void SelectGpuPresentation();
+    void SelectHeightFieldPresentation();
 
 private:
     enum class Presentation
     {
         Cpu,
-        Gpu
+        Gpu,
+        HeightField
     };
 
     void ApplyPresentationVisibility();
@@ -87,6 +89,9 @@ private:
     wxSize m_heightDepthTextureSize;
     wxWindow *m_mouseCapture = nullptr;
     wxPoint m_lastMousePosition;
+    float m_heightYawRadians;
+    float m_heightPitchRadians;
+    float m_heightDistance;
     wxTimer m_timer;
     wxBitmap m_cpuBitmap;
     bool m_cpuDirty = true;

@@ -488,18 +488,6 @@ Do not copy the texture back to the CPU.  Build the first version as a
 procedural mesh: the vertex shader derives grid coordinates from
 `SV_VertexID` and emits triangles without a vertex or index buffer.
 
-Implement this in small slices.
-
-### 1. Height Field view mode and orbit camera
-
-Add a `Height Field` item to the View menu beside the existing CPU and
-GPU choices.  Selecting it should show the SDL canvas, render the current
-iteration count image as a height field, and switch mouse event handling
-from Mandelbrot pan/zoom to an orbit camera model.  Mouse drag orbits
-around the height field, and the mouse wheel dollies the camera in and
-out.  Switching back to CPU or flat GPU restores the existing Mandelbrot
-pan/zoom mouse handling.
-
 ## Runtime controls
 
 Minimal controls:

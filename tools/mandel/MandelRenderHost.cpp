@@ -39,6 +39,16 @@ namespace
 {
 
 constexpr double zoom_scale_per_wheel_click = 0.8;
+constexpr float height_orbit_radians_per_pixel = 0.01f;
+constexpr float initial_height_yaw_radians = 0.72f;
+constexpr float initial_height_pitch_radians = 0.58f;
+constexpr float initial_height_distance = 3.1f;
+constexpr float min_height_pitch_radians = -1.2f;
+constexpr float max_height_pitch_radians = 1.2f;
+constexpr float min_height_distance = 1.4f;
+constexpr float max_height_distance = 8.0f;
+constexpr float height_camera_target_y = 0.16f;
+constexpr float height_field_of_view_radians = 0.785398163f;
 
 constexpr SDL_GPUShaderFormat gpu_shader_formats =
     SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL;
@@ -49,9 +59,6 @@ constexpr Uint32 height_grid_max_height = 144;
 constexpr float height_scale = 0.55f;
 constexpr SDL_GPUTextureFormat height_depth_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
 constexpr SDL_FColor gpu_clear_color{0.0f, 1.0f, 0.0f, 1.0f};
-
-constexpr std::array<float, 16> initial_height_world_to_clip{
-    0.58f, 0.30f, -0.04f, 0.0f, 0.0f, 0.62f, -0.16f, 0.0f, 0.35f, -0.18f, 0.12f, 0.0f, 0.0f, -0.25f, 0.60f, 1.0f};
 
 struct ShaderAssetFormat
 {
@@ -89,6 +96,13 @@ struct HeightGridSize
 {
     Uint32 width;
     Uint32 height;
+};
+
+struct Vec3
+{
+    float x;
+    float y;
+    float z;
 };
 
 constexpr std::array shader_asset_formats{
@@ -232,12 +246,90 @@ Uint32 height_field_vertex_count(HeightGridSize grid_size)
     return (grid_size.width - 1) * (grid_size.height - 1) * 6;
 }
 
-GpuHeightParams make_gpu_height_params(const core::MandelParams &params, const wxSize &size)
+float dot(Vec3 left, Vec3 right)
+{
+    return left.x * right.x + left.y * right.y + left.z * right.z;
+}
+
+Vec3 cross(Vec3 left, Vec3 right)
+{
+    return Vec3{
+        left.y * right.z - left.z * right.y, left.z * right.x - left.x * right.z, left.x * right.y - left.y * right.x};
+}
+
+Vec3 normalize(Vec3 value)
+{
+    const float length = std::sqrt(dot(value, value));
+    if (length <= 0.0f)
+    {
+        return Vec3{0.0f, 0.0f, 0.0f};
+    }
+
+    return Vec3{value.x / length, value.y / length, value.z / length};
+}
+
+std::array<float, 16> multiply_matrix(const std::array<float, 16> &left, const std::array<float, 16> &right)
+{
+    std::array<float, 16> result{};
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int column = 0; column < 4; ++column)
+        {
+            for (int index = 0; index < 4; ++index)
+            {
+                result[row * 4 + column] += left[row * 4 + index] * right[index * 4 + column];
+            }
+        }
+    }
+
+    return result;
+}
+
+std::array<float, 16> make_look_at_matrix(Vec3 eye, Vec3 target)
+{
+    const Vec3 forward = normalize(Vec3{target.x - eye.x, target.y - eye.y, target.z - eye.z});
+    const Vec3 backward = Vec3{-forward.x, -forward.y, -forward.z};
+    const Vec3 right = normalize(cross(Vec3{0.0f, 1.0f, 0.0f}, backward));
+    const Vec3 up = cross(backward, right);
+
+    return std::array<float, 16>{right.x, right.y, right.z, -dot(right, eye), up.x, up.y, up.z, -dot(up, eye),
+        backward.x, backward.y, backward.z, -dot(backward, eye), 0.0f, 0.0f, 0.0f, 1.0f};
+}
+
+std::array<float, 16> make_perspective_matrix(float aspect_ratio)
+{
+    constexpr float near_z = 0.05f;
+    constexpr float far_z = 20.0f;
+
+    const float y_scale = 1.0f / std::tan(height_field_of_view_radians * 0.5f);
+    const float x_scale = y_scale / std::max(aspect_ratio, 0.001f);
+    const float depth_scale = far_z / (near_z - far_z);
+    const float depth_offset = near_z * far_z / (near_z - far_z);
+
+    return std::array<float, 16>{x_scale, 0.0f, 0.0f, 0.0f, 0.0f, y_scale, 0.0f, 0.0f, 0.0f, 0.0f, depth_scale,
+        depth_offset, 0.0f, 0.0f, -1.0f, 0.0f};
+}
+
+std::array<float, 16> make_height_world_to_clip(float yaw_radians, float pitch_radians, float distance, wxSize size)
+{
+    const float aspect_ratio =
+        static_cast<float>(std::max(size.GetWidth(), 1)) / static_cast<float>(std::max(size.GetHeight(), 1));
+    const Vec3 target{0.0f, height_camera_target_y, 0.0f};
+    const float pitch_cosine = std::cos(pitch_radians);
+    const Vec3 eye{target.x + distance * pitch_cosine * std::sin(yaw_radians),
+        target.y + distance * std::sin(pitch_radians), target.z + distance * pitch_cosine * std::cos(yaw_radians)};
+
+    return multiply_matrix(make_perspective_matrix(aspect_ratio), make_look_at_matrix(eye, target));
+}
+
+GpuHeightParams make_gpu_height_params(
+    const core::MandelParams &params, const wxSize &size, float yaw_radians, float pitch_radians, float distance)
 {
     const auto grid_size = make_height_grid_size(size);
+    const auto world_to_clip = make_height_world_to_clip(yaw_radians, pitch_radians, distance, size);
 
     GpuHeightParams gpu_params{};
-    std::copy(initial_height_world_to_clip.begin(), initial_height_world_to_clip.end(), gpu_params.world_to_clip);
+    std::copy(world_to_clip.begin(), world_to_clip.end(), gpu_params.world_to_clip);
     gpu_params.texture_size[0] = static_cast<Uint32>(std::max(size.GetWidth(), 1));
     gpu_params.texture_size[1] = static_cast<Uint32>(std::max(size.GetHeight(), 1));
     gpu_params.grid_size[0] = grid_size.width;
@@ -403,6 +495,9 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_heightPipeline(make_height_pipeline(
         m_gpuDevice, m_canvas.window().get(), m_heightVertexShader.get(), m_heightFragmentShader.get())),
     m_paletteBuffer(make_palette_buffer(m_gpuDevice, m_palette)),
+    m_heightYawRadians(initial_height_yaw_radians),
+    m_heightPitchRadians(initial_height_pitch_radians),
+    m_heightDistance(initial_height_distance),
     m_timer(&frame)
 {
     m_cpuDisplay.SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -563,7 +658,8 @@ void MandelRenderHost::RenderHeightField(
     sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass, const wxSize &size)
 {
     const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
-    const auto height_params = make_gpu_height_params(params, size);
+    const auto height_params =
+        make_gpu_height_params(params, size, m_heightYawRadians, m_heightPitchRadians, m_heightDistance);
     const auto blit_params = make_gpu_blit_params(params, m_palette);
     const auto grid_size = make_height_grid_size(size);
 
@@ -651,6 +747,7 @@ void MandelRenderHost::UnbindMouseEvents(wxWindow &window)
 
 void MandelRenderHost::SelectCpuPresentation()
 {
+    ReleaseMouse();
     m_presentation = Presentation::Cpu;
     ApplyPresentationVisibility();
     RefreshActiveDisplay();
@@ -658,7 +755,16 @@ void MandelRenderHost::SelectCpuPresentation()
 
 void MandelRenderHost::SelectGpuPresentation()
 {
+    ReleaseMouse();
     m_presentation = Presentation::Gpu;
+    ApplyPresentationVisibility();
+    RefreshActiveDisplay();
+}
+
+void MandelRenderHost::SelectHeightFieldPresentation()
+{
+    ReleaseMouse();
+    m_presentation = Presentation::HeightField;
     ApplyPresentationVisibility();
     RefreshActiveDisplay();
 }
@@ -666,7 +772,14 @@ void MandelRenderHost::SelectGpuPresentation()
 void MandelRenderHost::OnCanvasPaint(wxPaintEvent &)
 {
     wxPaintDC paint{&m_canvas};
-    RenderGpuFrame();
+    if (m_presentation == Presentation::HeightField)
+    {
+        RenderHeightFieldFrame();
+    }
+    else if (m_presentation == Presentation::Gpu)
+    {
+        RenderGpuFrame();
+    }
 }
 
 void MandelRenderHost::OnCpuPaint(wxPaintEvent &)
@@ -726,6 +839,17 @@ void MandelRenderHost::OnMouseMove(wxMouseEvent &event)
         return;
     }
 
+    if (m_presentation == Presentation::HeightField)
+    {
+        m_heightYawRadians += static_cast<float>(delta_x) * height_orbit_radians_per_pixel;
+        m_heightPitchRadians =
+            std::clamp(m_heightPitchRadians + static_cast<float>(delta_y) * height_orbit_radians_per_pixel,
+                min_height_pitch_radians, max_height_pitch_radians);
+        m_lastMousePosition = position;
+        RefreshActiveDisplay();
+        return;
+    }
+
     const wxSize size = DisplaySize();
     m_viewport.pan_pixels(delta_x, delta_y, size.GetWidth(), size.GetHeight());
     m_lastMousePosition = position;
@@ -741,6 +865,15 @@ void MandelRenderHost::OnMouseWheel(wxMouseEvent &event)
 
     const double clicks = static_cast<double>(event.GetWheelRotation()) / static_cast<double>(event.GetWheelDelta());
     const double scale = std::pow(zoom_scale_per_wheel_click, clicks);
+
+    if (m_presentation == Presentation::HeightField)
+    {
+        m_heightDistance =
+            std::clamp(m_heightDistance * static_cast<float>(scale), min_height_distance, max_height_distance);
+        RefreshActiveDisplay();
+        return;
+    }
+
     const wxPoint position = event.GetPosition();
     const wxSize size = DisplaySize();
 

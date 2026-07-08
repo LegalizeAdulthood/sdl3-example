@@ -1,6 +1,6 @@
 struct HeightParams
 {
-    float4x4 world_to_clip;
+    row_major float4x4 world_to_clip;
     uint2 texture_size;
     uint2 grid_size;
     float max_iterations;
