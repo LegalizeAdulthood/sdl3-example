@@ -24,6 +24,12 @@ TEST(GpuRenderPass, exposesSdlStyleMethods)
     static_assert(std::is_same_v<decltype(&sdlcpp::GpuRenderPass::EndGPURenderPass), EndMethod>);
     static_assert(std::is_same_v<decltype(&sdlcpp::GpuRenderPass::BindGPUGraphicsPipeline), BindPipelineMethod>);
     static_assert(std::is_same_v<decltype(static_cast<BindTextureArrayMethod>(
+                                     &sdlcpp::GpuRenderPass::BindGPUVertexStorageTextures)),
+        BindTextureArrayMethod>);
+    static_assert(
+        std::is_same_v<decltype(static_cast<BindTextureMethod>(&sdlcpp::GpuRenderPass::BindGPUVertexStorageTextures)),
+            BindTextureMethod>);
+    static_assert(std::is_same_v<decltype(static_cast<BindTextureArrayMethod>(
                                      &sdlcpp::GpuRenderPass::BindGPUFragmentStorageTextures)),
         BindTextureArrayMethod>);
     static_assert(

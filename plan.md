@@ -479,14 +479,7 @@ procedural mesh: the vertex shader derives grid coordinates from
 
 Implement this in small slices.
 
-### 1. Vertex-stage storage texture wrappers
-
-Add vertex-stage storage binding wrappers to `sdlcpp::GpuRenderPass`.
-Expose `SDL_BindGPUVertexStorageTextures` with the same shape as the
-existing fragment storage texture helpers, and add the matching wrapper
-contract test.
-
-### 2. Fixed height-field shader assets
+### 1. Fixed height-field shader assets
 
 Add fixed height-field shader assets under `tools/mandel/assets`.
 `height.vert.hlsl` should bind the `R32_FLOAT` iteration texture as a
@@ -495,20 +488,20 @@ scale iteration values into height, and output position plus color input.
 `height.frag.hlsl` should map the interpolated value to the existing
 palette or a simple lit color.
 
-### 3. Shadercross asset generation
+### 2. Shadercross asset generation
 
 Wire the height-field shaders into the shadercross asset generation.
 Keep them fixed build-time assets like the current blit and compute
 shaders, and extend the shader asset compile test to include them.
 
-### 4. Height-field graphics pipeline
+### 3. Height-field graphics pipeline
 
 Add a height-field graphics pipeline to `MandelRenderHost`.  Reuse the
 compute pass that fills the iteration texture, then bind that texture in
 the vertex stage and draw the procedural grid.  Add a depth texture if
 the first view needs proper hidden-surface ordering.
 
-### 5. GPU presentation mode switch
+### 4. GPU presentation mode switch
 
 Add a simple GPU presentation mode switch for flat texture vs
 height-field mesh.  Keep CPU presentation selected by default, keep input

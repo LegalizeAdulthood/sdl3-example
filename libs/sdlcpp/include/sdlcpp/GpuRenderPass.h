@@ -26,6 +26,8 @@ public:
 
     void EndGPURenderPass() noexcept;
     void BindGPUGraphicsPipeline(const GpuGraphicsPipeline &graphics_pipeline);
+    void BindGPUVertexStorageTextures(Uint32 first_slot, SDL_GPUTexture *const *storage_textures, Uint32 num_bindings);
+    void BindGPUVertexStorageTextures(Uint32 first_slot, const GpuTexture &texture);
     void BindGPUFragmentStorageTextures(
         Uint32 first_slot, SDL_GPUTexture *const *storage_textures, Uint32 num_bindings);
     void BindGPUFragmentStorageTextures(Uint32 first_slot, const GpuTexture &texture);
