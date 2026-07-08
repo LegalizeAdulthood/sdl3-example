@@ -27,6 +27,8 @@ misc_target(FILES
 misc_group_sources("Documentation" FILES
     "ReadMe.md"
     "plan.md"
+    "sdl3-gpu-render.md"
+    "sdl3-when-to-use.md"
     "shadercross.md")
 misc_group_sources("CMake Scripts" FILES
     "cmake/misc_target.cmake"
