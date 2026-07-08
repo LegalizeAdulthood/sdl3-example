@@ -19,7 +19,7 @@ TEST(MandelImage, HasIterationBufferDimensions)
 {
     const core::MandelIterationBuffer buffer{3, 1, {1.0f, 2.0f, 4.0f}};
 
-    const auto image = core::map_mandel_colors(buffer, 4);
+    const core::MandelImage image = core::map_mandel_colors(buffer, 4);
 
     EXPECT_EQ(buffer.width, image.width);
     EXPECT_EQ(buffer.height, image.height);
@@ -31,7 +31,7 @@ TEST(MandelImage, MapsSelectedIterationCountsToColors)
     const core::MandelIterationBuffer buffer{5, 1, {0.0f, 0.5f, 1.0f, 2.0f, 4.0f}};
     const core::MandelPalette palette{{{10, 20, 30, 255}, {40, 50, 60, 255}}};
 
-    const auto image = core::map_mandel_colors(buffer, 4, palette);
+    const core::MandelImage image = core::map_mandel_colors(buffer, 4, palette);
 
     expect_color(image.pixels[0], 10, 20, 30);
     expect_color(image.pixels[1], 25, 35, 45);

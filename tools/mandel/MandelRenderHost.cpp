@@ -38,6 +38,8 @@ namespace mandel
 namespace
 {
 
+using Matrix4x4 = std::array<float, 16>;
+
 constexpr double zoom_scale_per_wheel_click = 0.8;
 constexpr float height_orbit_radians_per_pixel = 0.01f;
 constexpr float initial_height_yaw_radians = 0.72f;
@@ -122,14 +124,14 @@ wxWindow *event_window(wxEvent &event)
 
 core::MandelPalette load_chroma_palette()
 {
-    const auto chroma_map = std::string{assets_dir} + "/chroma.map";
+    const std::string chroma_map = std::string{assets_dir} + "/chroma.map";
     std::ifstream input(chroma_map);
     if (!input)
     {
         throw std::runtime_error("Unable to open chroma.map");
     }
 
-    auto palette = core::read_mandel_palette(input);
+    core::MandelPalette palette = core::read_mandel_palette(input);
     if (palette.colors.empty())
     {
         throw std::runtime_error("chroma.map must contain RGB entries");
@@ -141,7 +143,7 @@ core::MandelPalette load_chroma_palette()
 const ShaderAssetFormat &shader_asset_format(const sdlcpp::GpuDevice &device)
 {
     const SDL_GPUShaderFormat supported_formats = device.GetGPUShaderFormats();
-    for (const auto &asset_format : shader_asset_formats)
+    for (const ShaderAssetFormat &asset_format : shader_asset_formats)
     {
         if ((supported_formats & asset_format.format) != 0)
         {
@@ -173,9 +175,9 @@ sdlcpp::GpuShader load_graphics_shader(const sdlcpp::GpuDevice &device, const ch
     SDL_GPUShaderStage stage, Uint32 num_storage_textures = 0, Uint32 num_storage_buffers = 0,
     Uint32 num_uniform_buffers = 0)
 {
-    const auto &asset_format = shader_asset_format(device);
+    const ShaderAssetFormat &asset_format = shader_asset_format(device);
     const auto path = std::string{assets_dir} + "/" + asset_name + asset_format.extension;
-    const auto code = read_shader_code(path);
+    const std::vector<Uint8> code = read_shader_code(path);
 
     SDL_GPUShaderCreateInfo create_info{};
     create_info.code_size = code.size();
@@ -192,9 +194,9 @@ sdlcpp::GpuShader load_graphics_shader(const sdlcpp::GpuDevice &device, const ch
 
 sdlcpp::GpuComputePipeline load_mandel_compute_pipeline(const sdlcpp::GpuDevice &device)
 {
-    const auto &asset_format = shader_asset_format(device);
+    const ShaderAssetFormat &asset_format = shader_asset_format(device);
     const auto path = std::string{assets_dir} + "/mandel.comp" + asset_format.extension;
-    const auto code = read_shader_code(path);
+    const std::vector<Uint8> code = read_shader_code(path);
 
     SDL_GPUComputePipelineCreateInfo create_info{};
     create_info.code_size = code.size();
@@ -275,9 +277,9 @@ Vec3 normalize(Vec3 value)
     return Vec3{value.x / length, value.y / length, value.z / length};
 }
 
-std::array<float, 16> multiply_matrix(const std::array<float, 16> &left, const std::array<float, 16> &right)
+Matrix4x4 multiply_matrix(const Matrix4x4 &left, const Matrix4x4 &right)
 {
-    std::array<float, 16> result{};
+    Matrix4x4 result{};
     for (int row = 0; row < 4; ++row)
     {
         for (int column = 0; column < 4; ++column)
@@ -292,18 +294,18 @@ std::array<float, 16> multiply_matrix(const std::array<float, 16> &left, const s
     return result;
 }
 
-std::array<float, 16> make_look_at_matrix(Vec3 eye, Vec3 target)
+Matrix4x4 make_look_at_matrix(Vec3 eye, Vec3 target)
 {
     const Vec3 forward = normalize(Vec3{target.x - eye.x, target.y - eye.y, target.z - eye.z});
     const Vec3 backward = Vec3{-forward.x, -forward.y, -forward.z};
     const Vec3 right = normalize(cross(Vec3{0.0f, 1.0f, 0.0f}, backward));
     const Vec3 up = cross(backward, right);
 
-    return std::array<float, 16>{right.x, right.y, right.z, -dot(right, eye), up.x, up.y, up.z, -dot(up, eye),
+    return Matrix4x4{right.x, right.y, right.z, -dot(right, eye), up.x, up.y, up.z, -dot(up, eye),
         backward.x, backward.y, backward.z, -dot(backward, eye), 0.0f, 0.0f, 0.0f, 1.0f};
 }
 
-std::array<float, 16> make_perspective_matrix(float aspect_ratio)
+Matrix4x4 make_perspective_matrix(float aspect_ratio)
 {
     constexpr float near_z = 0.05f;
     constexpr float far_z = 20.0f;
@@ -313,11 +315,11 @@ std::array<float, 16> make_perspective_matrix(float aspect_ratio)
     const float depth_scale = far_z / (near_z - far_z);
     const float depth_offset = near_z * far_z / (near_z - far_z);
 
-    return std::array<float, 16>{x_scale, 0.0f, 0.0f, 0.0f, 0.0f, y_scale, 0.0f, 0.0f, 0.0f, 0.0f, depth_scale,
+    return Matrix4x4{x_scale, 0.0f, 0.0f, 0.0f, 0.0f, y_scale, 0.0f, 0.0f, 0.0f, 0.0f, depth_scale,
         depth_offset, 0.0f, 0.0f, -1.0f, 0.0f};
 }
 
-std::array<float, 16> make_height_world_to_clip(float yaw_radians, float pitch_radians, float distance, wxSize size)
+Matrix4x4 make_height_world_to_clip(float yaw_radians, float pitch_radians, float distance, wxSize size)
 {
     const float aspect_ratio =
         static_cast<float>(std::max(size.GetWidth(), 1)) / static_cast<float>(std::max(size.GetHeight(), 1));
@@ -332,8 +334,8 @@ std::array<float, 16> make_height_world_to_clip(float yaw_radians, float pitch_r
 GpuHeightParams make_gpu_height_params(
     const wxSize &size, float yaw_radians, float pitch_radians, float distance, float height_value_max)
 {
-    const auto grid_size = make_height_grid_size(size);
-    const auto world_to_clip = make_height_world_to_clip(yaw_radians, pitch_radians, distance, size);
+    const HeightGridSize grid_size = make_height_grid_size(size);
+    const Matrix4x4 world_to_clip = make_height_world_to_clip(yaw_radians, pitch_radians, distance, size);
 
     GpuHeightParams gpu_params{};
     std::copy(world_to_clip.begin(), world_to_clip.end(), gpu_params.world_to_clip);
@@ -359,12 +361,12 @@ sdlcpp::GpuBuffer make_palette_buffer(const sdlcpp::GpuDevice &device, const cor
     SDL_GPUBufferCreateInfo buffer_create_info{};
     buffer_create_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
     buffer_create_info.size = buffer_size;
-    auto palette_buffer = device.CreateGPUBuffer(buffer_create_info);
+    sdlcpp::GpuBuffer palette_buffer = device.CreateGPUBuffer(buffer_create_info);
 
     SDL_GPUTransferBufferCreateInfo transfer_create_info{};
     transfer_create_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
     transfer_create_info.size = buffer_size;
-    auto transfer_buffer = device.CreateGPUTransferBuffer(transfer_create_info);
+    sdlcpp::GpuTransferBuffer transfer_buffer = device.CreateGPUTransferBuffer(transfer_create_info);
 
     auto *mapped = static_cast<Uint32 *>(device.MapGPUTransferBuffer(transfer_buffer, false));
 
@@ -374,8 +376,8 @@ sdlcpp::GpuBuffer make_palette_buffer(const sdlcpp::GpuDevice &device, const cor
     }
     device.UnmapGPUTransferBuffer(transfer_buffer);
 
-    auto command_buffer = device.AcquireGPUCommandBuffer();
-    auto copy_pass = command_buffer.BeginGPUCopyPass();
+    sdlcpp::GpuCommandBuffer command_buffer = device.AcquireGPUCommandBuffer();
+    sdlcpp::GpuCopyPass copy_pass = command_buffer.BeginGPUCopyPass();
     copy_pass.UploadToGPUBuffer(transfer_buffer, 0, palette_buffer, 0, buffer_size, false);
     copy_pass.EndGPUCopyPass();
     command_buffer.SubmitGPUCommandBuffer();
@@ -466,14 +468,14 @@ std::size_t pixel_index(int width, int px, int py)
 wxBitmap make_bitmap(const core::MandelImage &image)
 {
     wxImage wx_image(image.width, image.height);
-    auto *data = wx_image.GetData();
+    unsigned char *data = wx_image.GetData();
 
     for (int py = 0; py < image.height; ++py)
     {
         for (int px = 0; px < image.width; ++px)
         {
-            const auto color = image.pixels[pixel_index(image.width, px, py)];
-            const auto offset = 3 * pixel_index(image.width, px, py);
+            const core::Rgba8 color = image.pixels[pixel_index(image.width, px, py)];
+            const std::size_t offset = 3 * pixel_index(image.width, px, py);
             data[offset + 0] = color.red;
             data[offset + 1] = color.green;
             data[offset + 2] = color.blue;
@@ -636,9 +638,9 @@ void MandelRenderHost::RenderCpuImage()
         return;
     }
 
-    const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
-    const auto iterations = core::render_mandel_cpu(params);
-    const auto image = core::map_mandel_colors(iterations, params.max_iterations, m_palette);
+    const core::MandelParams params = m_viewport.params(size.GetWidth(), size.GetHeight());
+    const core::MandelIterationBuffer iterations = core::render_mandel_cpu(params);
+    const core::MandelImage image = core::map_mandel_colors(iterations, params.max_iterations, m_palette);
     m_cpuBitmap = make_bitmap(image);
     m_cpuDirty = false;
 }
@@ -650,14 +652,14 @@ void MandelRenderHost::RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, 
         return;
     }
 
-    const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
-    const auto gpu_params = make_gpu_mandel_params(params);
+    const core::MandelParams params = m_viewport.params(size.GetWidth(), size.GetHeight());
+    const GpuMandelParams gpu_params = make_gpu_mandel_params(params);
     command_buffer.PushGPUComputeUniformData(0, &gpu_params, sizeof(gpu_params));
 
     const std::array output_textures{
         SDL_GPUStorageTextureReadWriteBinding{m_iterationTexture.get(), 0, 0, true, 0, 0, 0},
         SDL_GPUStorageTextureReadWriteBinding{m_potentialTexture.get(), 0, 0, true, 0, 0, 0}};
-    auto compute_pass =
+    sdlcpp::GpuComputePass compute_pass =
         command_buffer.BeginGPUComputePass(output_textures.data(), static_cast<Uint32>(output_textures.size()));
     compute_pass.BindGPUComputePipeline(m_mandelComputePipeline);
     compute_pass.DispatchGPUCompute(ceil_div(static_cast<Uint32>(size.GetWidth()), mandel_workgroup_size),
@@ -668,11 +670,11 @@ void MandelRenderHost::RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, 
 void MandelRenderHost::RenderHeightField(sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass,
     const wxSize &size, sdlcpp::GpuTexture &height_texture, float height_value_max)
 {
-    const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
-    const auto height_params =
+    const core::MandelParams params = m_viewport.params(size.GetWidth(), size.GetHeight());
+    const GpuHeightParams height_params =
         make_gpu_height_params(size, m_heightYawRadians, m_heightPitchRadians, m_heightDistance, height_value_max);
-    const auto blit_params = make_gpu_blit_params(params, m_palette);
-    const auto grid_size = make_height_grid_size(size);
+    const GpuBlitParams blit_params = make_gpu_blit_params(params, m_palette);
+    const HeightGridSize grid_size = make_height_grid_size(size);
 
     command_buffer.PushGPUVertexUniformData(0, &height_params, sizeof(height_params));
     command_buffer.PushGPUFragmentUniformData(0, &blit_params, sizeof(blit_params));
@@ -694,9 +696,10 @@ void MandelRenderHost::RenderHeightFieldFrame(bool use_potential_height)
     EnsureGpuTexture(size);
     EnsureHeightDepthTexture(size);
 
-    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    sdlcpp::GpuCommandBuffer command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
     RenderGpuImage(command_buffer, size);
-    const auto swapchain_texture = command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
+    const sdlcpp::GpuSwapchainTexture swapchain_texture =
+        command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
 
     if (swapchain_texture)
     {
@@ -704,14 +707,14 @@ void MandelRenderHost::RenderHeightFieldFrame(bool use_potential_height)
             SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
         const SDL_GPUDepthStencilTargetInfo depth_info{m_heightDepthTexture.get(), 1.0f, SDL_GPU_LOADOP_CLEAR,
             SDL_GPU_STOREOP_DONT_CARE, SDL_GPU_LOADOP_DONT_CARE, SDL_GPU_STOREOP_DONT_CARE, true, 0, 0, 0};
-        auto render_pass = command_buffer.BeginGPURenderPass(&target_info, 1, &depth_info);
+        sdlcpp::GpuRenderPass render_pass = command_buffer.BeginGPURenderPass(&target_info, 1, &depth_info);
         if (use_potential_height)
         {
             RenderHeightField(command_buffer, render_pass, size, m_potentialTexture, 1.0f);
         }
         else
         {
-            const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
+            const core::MandelParams params = m_viewport.params(size.GetWidth(), size.GetHeight());
             RenderHeightField(
                 command_buffer, render_pass, size, m_iterationTexture, static_cast<float>(params.max_iterations));
         }
@@ -730,17 +733,18 @@ void MandelRenderHost::RenderGpuFrame()
 
     EnsureGpuTexture(size);
 
-    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    sdlcpp::GpuCommandBuffer command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
     RenderGpuImage(command_buffer, size);
-    const auto swapchain_texture = command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
+    const sdlcpp::GpuSwapchainTexture swapchain_texture =
+        command_buffer.WaitAndAcquireGPUSwapchainTexture(m_canvas.window().get());
 
     if (swapchain_texture)
     {
         const SDL_GPUColorTargetInfo target_info{swapchain_texture.texture, 0, 0, gpu_clear_color, SDL_GPU_LOADOP_CLEAR,
             SDL_GPU_STOREOP_STORE, nullptr, 0, 0, false, false, 0, 0};
-        auto render_pass = command_buffer.BeginGPURenderPass(&target_info, 1);
-        const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
-        const auto gpu_params = make_gpu_blit_params(params, m_palette);
+        sdlcpp::GpuRenderPass render_pass = command_buffer.BeginGPURenderPass(&target_info, 1);
+        const core::MandelParams params = m_viewport.params(size.GetWidth(), size.GetHeight());
+        const GpuBlitParams gpu_params = make_gpu_blit_params(params, m_palette);
         command_buffer.PushGPUFragmentUniformData(0, &gpu_params, sizeof(gpu_params));
         render_pass.BindGPUGraphicsPipeline(m_blitPipeline);
         render_pass.BindGPUFragmentStorageTextures(0, m_iterationTexture);
@@ -753,7 +757,7 @@ void MandelRenderHost::RenderGpuFrame()
 
 void MandelRenderHost::SubmitEmptyGpuCommandBuffer()
 {
-    auto command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
+    sdlcpp::GpuCommandBuffer command_buffer = m_gpuDevice.AcquireGPUCommandBuffer();
     command_buffer.SubmitGPUCommandBuffer();
 }
 
@@ -838,7 +842,7 @@ void MandelRenderHost::OnMouseCaptureLost(wxMouseCaptureLostEvent &)
 
 void MandelRenderHost::OnMouseLeftDown(wxMouseEvent &event)
 {
-    auto *window = event_window(event);
+    wxWindow *window = event_window(event);
     if (window == nullptr)
     {
         return;

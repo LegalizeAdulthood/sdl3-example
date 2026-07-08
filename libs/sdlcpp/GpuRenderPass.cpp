@@ -61,7 +61,7 @@ void GpuRenderPass::BindGPUVertexStorageTextures(
 
 void GpuRenderPass::BindGPUVertexStorageTextures(Uint32 first_slot, const GpuTexture &texture)
 {
-    auto *storage_texture = texture.get();
+    SDL_GPUTexture *storage_texture = texture.get();
     require_pointer(storage_texture, "texture");
     BindGPUVertexStorageTextures(first_slot, &storage_texture, 1);
 }
@@ -76,7 +76,7 @@ void GpuRenderPass::BindGPUFragmentStorageTextures(
 
 void GpuRenderPass::BindGPUFragmentStorageTextures(Uint32 first_slot, const GpuTexture &texture)
 {
-    auto *storage_texture = texture.get();
+    SDL_GPUTexture *storage_texture = texture.get();
     require_pointer(storage_texture, "texture");
     BindGPUFragmentStorageTextures(first_slot, &storage_texture, 1);
 }
@@ -91,7 +91,7 @@ void GpuRenderPass::BindGPUFragmentStorageBuffers(
 
 void GpuRenderPass::BindGPUFragmentStorageBuffers(Uint32 first_slot, const GpuBuffer &buffer)
 {
-    auto *storage_buffer = buffer.get();
+    SDL_GPUBuffer *storage_buffer = buffer.get();
     require_pointer(storage_buffer, "buffer");
     BindGPUFragmentStorageBuffers(first_slot, &storage_buffer, 1);
 }

@@ -21,7 +21,7 @@ TEST(MandelViewport, BuildsInitialParamsWithImageAspect)
 {
     const core::MandelViewport viewport;
 
-    const auto params = viewport.params(800, 600);
+    const core::MandelParams params = viewport.params(800, 600);
 
     EXPECT_DOUBLE_EQ(-2.5, params.x_min);
     EXPECT_DOUBLE_EQ(-1.5, params.y_min);
@@ -38,7 +38,7 @@ TEST(MandelViewport, PansOppositeTheMouseDrag)
 
     viewport.pan_pixels(10, -5, 100, 50);
 
-    const auto params = viewport.params(100, 50);
+    const core::MandelParams params = viewport.params(100, 50);
     EXPECT_DOUBLE_EQ(-2.9, params.x_min);
     EXPECT_DOUBLE_EQ(-0.8, params.y_min);
 }
@@ -46,7 +46,7 @@ TEST(MandelViewport, PansOppositeTheMouseDrag)
 TEST(MandelViewport, ZoomKeepsAnchorPixelFixed)
 {
     core::MandelViewport viewport;
-    const auto before = viewport.params(100, 50);
+    const core::MandelParams before = viewport.params(100, 50);
     const int px = 25;
     const int py = 10;
     const double anchor_x = pixel_x(before, px);
@@ -54,7 +54,7 @@ TEST(MandelViewport, ZoomKeepsAnchorPixelFixed)
 
     viewport.zoom_at(0.5, px, py, 100, 50);
 
-    const auto after = viewport.params(100, 50);
+    const core::MandelParams after = viewport.params(100, 50);
     EXPECT_DOUBLE_EQ(before.dx * 0.5, after.dx);
     EXPECT_DOUBLE_EQ(anchor_x, pixel_x(after, px));
     EXPECT_DOUBLE_EQ(anchor_y, pixel_y(after, py));

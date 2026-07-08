@@ -29,14 +29,14 @@ core::MandelParams point_params(double real, double imag)
 
 TEST(MandelCpu, OriginIsInside)
 {
-    const auto params = point_params(0.0, 0.0);
+    const core::MandelParams params = point_params(0.0, 0.0);
 
     EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), core::mandel_cpu_pixel(params, 0, 0));
 }
 
 TEST(MandelCpu, FarPointEscapesQuickly)
 {
-    const auto params = point_params(2.0, 2.0);
+    const core::MandelParams params = point_params(2.0, 2.0);
 
     const float iteration = core::mandel_cpu_pixel(params, 0, 0);
 
@@ -46,7 +46,7 @@ TEST(MandelCpu, FarPointEscapesQuickly)
 
 TEST(MandelCpu, PeriodicityOnAndOffStayBounded)
 {
-    auto params = point_params(0.0, 0.0);
+    core::MandelParams params = point_params(0.0, 0.0);
     const float with_periodicity = core::mandel_cpu_pixel(params, 0, 0);
 
     params.periodicity_check = 0;

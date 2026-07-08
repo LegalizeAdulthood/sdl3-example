@@ -29,7 +29,7 @@ void MandelViewport::pan_pixels(int delta_x, int delta_y, int width, int height)
         return;
     }
 
-    const auto before = params(width, height);
+    const MandelParams before = params(width, height);
     m_centerX -= static_cast<double>(delta_x) * before.dx;
     m_centerY -= static_cast<double>(delta_y) * before.dy;
 }
@@ -41,7 +41,7 @@ void MandelViewport::zoom_at(double scale, int px, int py, int width, int height
         return;
     }
 
-    const auto before = params(width, height);
+    const MandelParams before = params(width, height);
     const double anchor_x = before.x_min + static_cast<double>(px) * before.dx;
     const double anchor_y = before.y_min + static_cast<double>(py) * before.dy;
 

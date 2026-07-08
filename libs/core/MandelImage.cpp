@@ -75,7 +75,7 @@ Rgba8 mandel_color(float iteration, int max_iterations, const MandelPalette &pal
     const float wrapped = std::fmod(clamped, static_cast<float>(palette.colors.size()));
     const float base = std::floor(wrapped);
     const auto first_index = static_cast<std::size_t>(base);
-    const auto second_index = (first_index + 1) % palette.colors.size();
+    const std::size_t second_index = (first_index + 1) % palette.colors.size();
     return blend_color(palette.colors[first_index], palette.colors[second_index], wrapped - base);
 }
 

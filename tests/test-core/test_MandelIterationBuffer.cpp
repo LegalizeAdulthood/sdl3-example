@@ -29,8 +29,8 @@ core::MandelParams two_point_params()
 
 TEST(MandelIterationBuffer, HasImageDimensions)
 {
-    const auto params = two_point_params();
-    const auto buffer = core::render_mandel_cpu(params);
+    const core::MandelParams params = two_point_params();
+    const core::MandelIterationBuffer buffer = core::render_mandel_cpu(params);
 
     EXPECT_EQ(params.width, buffer.width);
     EXPECT_EQ(params.height, buffer.height);
@@ -39,8 +39,8 @@ TEST(MandelIterationBuffer, HasImageDimensions)
 
 TEST(MandelIterationBuffer, StoresSelectedIterationCounts)
 {
-    const auto params = two_point_params();
-    const auto buffer = core::render_mandel_cpu(params);
+    const core::MandelParams params = two_point_params();
+    const core::MandelIterationBuffer buffer = core::render_mandel_cpu(params);
 
     EXPECT_FLOAT_EQ(static_cast<float>(params.max_iterations), buffer.iterations[0]);
     EXPECT_GT(buffer.iterations[1], 1.0f);

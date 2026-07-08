@@ -88,7 +88,7 @@ GpuComputePass GpuCommandBuffer::BeginGPUComputePass(
     const SDL_GPUStorageBufferReadWriteBinding *storage_buffer_bindings, Uint32 num_storage_buffer_bindings)
 {
     require_pointer(command_buffer_, "command_buffer");
-    auto *compute_pass = SDL_BeginGPUComputePass(command_buffer_, storage_texture_bindings,
+    SDL_GPUComputePass *compute_pass = SDL_BeginGPUComputePass(command_buffer_, storage_texture_bindings,
         num_storage_texture_bindings, storage_buffer_bindings, num_storage_buffer_bindings);
     if (compute_pass == nullptr)
     {
@@ -100,7 +100,7 @@ GpuComputePass GpuCommandBuffer::BeginGPUComputePass(
 GpuCopyPass GpuCommandBuffer::BeginGPUCopyPass()
 {
     require_pointer(command_buffer_, "command_buffer");
-    auto *copy_pass = SDL_BeginGPUCopyPass(command_buffer_);
+    SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(command_buffer_);
     if (copy_pass == nullptr)
     {
         throw_error("SDL_BeginGPUCopyPass");
@@ -113,7 +113,7 @@ GpuRenderPass GpuCommandBuffer::BeginGPURenderPass(const SDL_GPUColorTargetInfo 
 {
     require_pointer(command_buffer_, "command_buffer");
     require_pointer(color_target_infos, "color_target_infos");
-    auto *render_pass =
+    SDL_GPURenderPass *render_pass =
         SDL_BeginGPURenderPass(command_buffer_, color_target_infos, num_color_targets, depth_stencil_target_info);
     if (render_pass == nullptr)
     {

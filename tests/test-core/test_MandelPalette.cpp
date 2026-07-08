@@ -23,7 +23,7 @@ TEST(MandelPalette, ReadsRgbRowsAndIgnoresTrailingText)
                              "1 2 3\n"
                              "not a color\n"};
 
-    const auto palette = core::read_mandel_palette(input);
+    const core::MandelPalette palette = core::read_mandel_palette(input);
 
     ASSERT_EQ(2u, palette.colors.size());
     expect_color(palette.colors[0], 48, 49, 50);
