@@ -483,13 +483,6 @@ iteration == max_iterations -> black
 otherwise                   -> chroma.map[iteration % palette_size]
 ```
 
-## Height-field geometry slices
-
-Use the existing `R32_FLOAT` iteration texture as a GPU-only height source.
-Do not copy the texture back to the CPU.  Build the first version as a
-procedural mesh: the vertex shader derives grid coordinates from
-`SV_VertexID` and emits triangles without a vertex or index buffer.
-
 ## Runtime controls
 
 Minimal controls:
