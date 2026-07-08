@@ -8,11 +8,11 @@ struct HeightColorParams
 struct VertexOutput
 {
     float4 position : SV_Position;
-    float iteration : TEXCOORD0;
-    float normalized_height : TEXCOORD1;
+    float2 uv : TEXCOORD0;
 };
 
-StructuredBuffer<uint> palette : register(t0, space2);
+Texture2D<float> iteration_tex : register(t0, space2);
+StructuredBuffer<uint> palette : register(t1, space2);
 ConstantBuffer<HeightColorParams> params : register(b0, space3);
 
 float4 unpack_palette_color(uint color)
@@ -22,6 +22,18 @@ float4 unpack_palette_color(uint color)
     float blue = float((color >> 16) & 0xffu) / 255.0;
     float alpha = float((color >> 24) & 0xffu) / 255.0;
     return float4(red, green, blue, alpha);
+}
+
+float load_iteration(float2 uv)
+{
+    uint width;
+    uint height;
+    iteration_tex.GetDimensions(width, height);
+
+    uint2 texture_size = uint2(max(width, 1u), max(height, 1u));
+    float2 texture_extent = float2(texture_size - 1u);
+    uint2 texture_coord = uint2(uv * texture_extent + 0.5);
+    return iteration_tex.Load(int3(int2(texture_coord), 0));
 }
 
 float4 palette_color(float iteration)
@@ -43,7 +55,9 @@ float4 palette_color(float iteration)
 float4 main(VertexOutput input) :
     SV_Target0
 {
-    float4 color = palette_color(input.iteration);
-    float light = lerp(0.55, 1.0, saturate(input.normalized_height));
+    float iteration = load_iteration(input.uv);
+    float4 color = palette_color(iteration);
+    float normalized_height = saturate(iteration / max(params.max_iterations, 1.0));
+    float light = lerp(0.55, 1.0, normalized_height);
     return float4(color.rgb * light, color.a);
 }

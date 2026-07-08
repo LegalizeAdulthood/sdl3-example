@@ -58,7 +58,7 @@ constexpr Uint32 height_grid_max_width = 192;
 constexpr Uint32 height_grid_max_height = 144;
 constexpr float height_scale = 0.55f;
 constexpr SDL_GPUTextureFormat height_depth_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
-constexpr SDL_FColor gpu_clear_color{0.0f, 1.0f, 0.0f, 1.0f};
+constexpr SDL_FColor gpu_clear_color{0.0f, 0.0f, 0.0f, 1.0f};
 
 struct ShaderAssetFormat
 {
@@ -491,7 +491,7 @@ MandelRenderHost::MandelRenderHost(wxWindow &frame, wxWindow &cpu_display, wxsdl
     m_blitPipeline(
         make_blit_pipeline(m_gpuDevice, m_canvas.window().get(), m_blitVertexShader.get(), m_blitFragmentShader.get())),
     m_heightVertexShader(load_graphics_shader(m_gpuDevice, "height.vert", SDL_GPU_SHADERSTAGE_VERTEX, 1, 0, 1)),
-    m_heightFragmentShader(load_graphics_shader(m_gpuDevice, "height.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 1, 1)),
+    m_heightFragmentShader(load_graphics_shader(m_gpuDevice, "height.frag", SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1, 1)),
     m_heightPipeline(make_height_pipeline(
         m_gpuDevice, m_canvas.window().get(), m_heightVertexShader.get(), m_heightFragmentShader.get())),
     m_paletteBuffer(make_palette_buffer(m_gpuDevice, m_palette)),
@@ -667,6 +667,7 @@ void MandelRenderHost::RenderHeightField(
     command_buffer.PushGPUFragmentUniformData(0, &blit_params, sizeof(blit_params));
     render_pass.BindGPUGraphicsPipeline(m_heightPipeline);
     render_pass.BindGPUVertexStorageTextures(0, m_iterationTexture);
+    render_pass.BindGPUFragmentStorageTextures(0, m_iterationTexture);
     render_pass.BindGPUFragmentStorageBuffers(0, m_paletteBuffer);
     render_pass.DrawGPUPrimitives(height_field_vertex_count(grid_size), 1, 0, 0);
 }

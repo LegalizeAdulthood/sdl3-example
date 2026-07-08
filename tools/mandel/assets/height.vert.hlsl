@@ -11,8 +11,7 @@ struct HeightParams
 struct VertexOutput
 {
     float4 position : SV_Position;
-    float iteration : TEXCOORD0;
-    float normalized_height : TEXCOORD1;
+    float2 uv : TEXCOORD0;
 };
 
 Texture2D<float> iteration_tex : register(t0, space0);
@@ -52,7 +51,6 @@ VertexOutput main(uint vertex_id : SV_VertexID)
 
     VertexOutput output;
     output.position = mul(params.world_to_clip, float4(world_position, 1.0));
-    output.iteration = iteration;
-    output.normalized_height = normalized_height;
+    output.uv = uv;
     return output;
 }

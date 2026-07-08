@@ -488,6 +488,22 @@ Do not copy the texture back to the CPU.  Build the first version as a
 procedural mesh: the vertex shader derives grid coordinates from
 `SV_VertexID` and emits triangles without a vertex or index buffer.
 
+Future refinements can replace the height source while keeping the
+GPU-only mesh path.
+
+### 1. Potential Field view option
+
+Add a `Potential Field` item to the View menu beside `Height Field`.
+Both mesh views should use the same SDL canvas and orbit camera controls
+so they can be compared directly.  Keep `Height Field` using the current
+continuous iteration texture for mesh height.  Add a separate GPU-only
+`R32_FLOAT` potential texture for the `Potential Field` mesh height, while
+continuing to use the continuous iteration texture for color.  Use a
+height-field bailout significantly larger than `4.0` so the escaped orbit
+magnitude is useful for potential estimation.  Compute the potential from
+escaped orbit magnitude and iteration count.  Map inside or maxiter points
+explicitly to height `0` or to a capped interior plateau.
+
 ## Runtime controls
 
 Minimal controls:
