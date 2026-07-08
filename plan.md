@@ -257,12 +257,15 @@ windows in the same frame and use visibility to choose the active
 presentation:
 
 ```text
-CPU selected:  CPU wxWindow shown, GPU SdlCanvas hidden
-GPU selected:  CPU wxWindow hidden, GPU SdlCanvas shown
+CPU selected:           CPU wxWindow shown, GPU SdlCanvas hidden
+GPU selected:           CPU wxWindow hidden, GPU SdlCanvas shown
+Height Field selected:  CPU wxWindow hidden, GPU SdlCanvas shown
 ```
 
 Do not mix CPU drawing into the SDL canvas, and do not use the GPU
-swapchain as the CPU display path.
+swapchain as the CPU display path.  `Height Field` is a View menu item
+that reuses the current GPU iteration texture and presents it as a
+procedural mesh.
 
 ## CPU frame flow
 
@@ -490,16 +493,21 @@ Implement this in small slices.
 ### 1. Height-field graphics pipeline
 
 Add a height-field graphics pipeline to `MandelRenderHost`.  Reuse the
-compute pass that fills the iteration texture, then bind that texture in
-the vertex stage and draw the procedural grid.  Add a depth texture if
-the first view needs proper hidden-surface ordering.
+compute pass that fills the current iteration texture, then bind that
+texture in the vertex stage and draw the procedural grid.  Add a depth
+texture if the first view needs proper hidden-surface ordering.  Push a
+height-field camera uniform block containing the world-to-clip matrix,
+source texture size, grid size, max iteration count, and height scale.
 
-### 2. GPU presentation mode switch
+### 2. Height Field view mode and orbit camera
 
-Add a simple GPU presentation mode switch for flat texture vs
-height-field mesh.  Keep CPU presentation selected by default, keep input
-owned by wxWidgets, and use a fixed camera or simple animated orbit for
-the first geometry demo.
+Add a `Height Field` item to the View menu beside the existing CPU and
+GPU choices.  Selecting it should show the SDL canvas, render the current
+iteration count image as a height field, and switch mouse event handling
+from Mandelbrot pan/zoom to an orbit camera model.  Mouse drag orbits
+around the height field, and the mouse wheel dollies the camera in and
+out.  Switching back to CPU or flat GPU restores the existing Mandelbrot
+pan/zoom mouse handling.
 
 ## Runtime controls
 
