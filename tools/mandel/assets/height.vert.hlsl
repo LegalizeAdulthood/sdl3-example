@@ -3,7 +3,7 @@ struct HeightParams
     row_major float4x4 world_to_clip;
     uint2 texture_size;
     uint2 grid_size;
-    float max_iterations;
+    float height_value_max;
     float height_scale;
     float2 padding;
 };
@@ -45,7 +45,7 @@ VertexOutput main(uint vertex_id : SV_VertexID)
     uint2 texture_coord = uint2(uv * texture_extent + 0.5);
     float iteration = iteration_tex.Load(int3(int2(texture_coord), 0));
 
-    float normalized_height = saturate(iteration / max(params.max_iterations, 1.0));
+    float normalized_height = saturate(iteration / max(params.height_value_max, 0.000001));
     float height = normalized_height * params.height_scale;
     float3 world_position = float3(uv.x * 2.0 - 1.0, height, 1.0 - uv.y * 2.0);
 

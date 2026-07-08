@@ -30,13 +30,15 @@ public:
     void SelectCpuPresentation();
     void SelectGpuPresentation();
     void SelectHeightFieldPresentation();
+    void SelectPotentialFieldPresentation();
 
 private:
     enum class Presentation
     {
         Cpu,
         Gpu,
-        HeightField
+        HeightField,
+        PotentialField
     };
 
     void ApplyPresentationVisibility();
@@ -48,8 +50,8 @@ private:
     void LayoutDisplays();
     void RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, const wxSize &size);
     void RenderHeightField(sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass,
-        const wxSize &size);
-    void RenderHeightFieldFrame();
+        const wxSize &size, sdlcpp::GpuTexture &height_texture, float height_value_max);
+    void RenderHeightFieldFrame(bool use_potential_height);
     void RefreshActiveDisplay();
     void RenderGpuFrame();
     void RenderCpuImage();
@@ -84,6 +86,7 @@ private:
     sdlcpp::GpuGraphicsPipeline m_heightPipeline;
     sdlcpp::GpuBuffer m_paletteBuffer;
     sdlcpp::GpuTexture m_iterationTexture;
+    sdlcpp::GpuTexture m_potentialTexture;
     sdlcpp::GpuTexture m_heightDepthTexture;
     wxSize m_gpuTextureSize;
     wxSize m_heightDepthTextureSize;

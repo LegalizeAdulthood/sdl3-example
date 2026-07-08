@@ -17,6 +17,7 @@ namespace
 constexpr int CpuPresentationMenuId = wxID_HIGHEST + 1;
 constexpr int GpuPresentationMenuId = wxID_HIGHEST + 2;
 constexpr int HeightFieldPresentationMenuId = wxID_HIGHEST + 3;
+constexpr int PotentialFieldPresentationMenuId = wxID_HIGHEST + 4;
 
 class MandelFrame : public wxFrame
 {
@@ -63,6 +64,7 @@ MandelFrame::MandelFrame() :
     viewMenu->AppendRadioItem(CpuPresentationMenuId, "&CPU");
     viewMenu->AppendRadioItem(GpuPresentationMenuId, "&GPU");
     viewMenu->AppendRadioItem(HeightFieldPresentationMenuId, "&Height Field");
+    viewMenu->AppendRadioItem(PotentialFieldPresentationMenuId, "&Potential Field");
     viewMenu->Check(CpuPresentationMenuId, true);
 
     auto *menuBar = new wxMenuBar;
@@ -81,6 +83,9 @@ MandelFrame::MandelFrame() :
     Bind(
         wxEVT_MENU, [this](wxCommandEvent &) { m_renderHost->SelectHeightFieldPresentation(); },
         HeightFieldPresentationMenuId);
+    Bind(
+        wxEVT_MENU, [this](wxCommandEvent &) { m_renderHost->SelectPotentialFieldPresentation(); },
+        PotentialFieldPresentationMenuId);
 }
 
 bool MandelApp::OnInit()

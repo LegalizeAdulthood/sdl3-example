@@ -57,6 +57,9 @@ constexpr Uint32 mandel_workgroup_size = 16;
 constexpr Uint32 height_grid_max_width = 192;
 constexpr Uint32 height_grid_max_height = 144;
 constexpr float height_scale = 0.55f;
+constexpr float potential_height_bailout = 65536.0f;
+constexpr float potential_height_scale = 64.0f;
+constexpr float potential_height_log_scale = 1.0f / 6.0f;
 constexpr SDL_GPUTextureFormat height_depth_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
 constexpr SDL_FColor gpu_clear_color{0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -71,6 +74,7 @@ struct alignas(16) GpuMandelParams
 {
     float view[4];
     float constants[4];
+    float potential[4];
     int image[4];
     int periodicity[4];
 };
@@ -87,7 +91,7 @@ struct alignas(16) GpuHeightParams
     float world_to_clip[16];
     Uint32 texture_size[2];
     Uint32 grid_size[2];
-    float max_iterations;
+    float height_value_max;
     float height_scale;
     float padding[2];
 };
@@ -197,7 +201,7 @@ sdlcpp::GpuComputePipeline load_mandel_compute_pipeline(const sdlcpp::GpuDevice 
     create_info.code = code.data();
     create_info.entrypoint = asset_format.entrypoint;
     create_info.format = asset_format.format;
-    create_info.num_readwrite_storage_textures = 1;
+    create_info.num_readwrite_storage_textures = 2;
     create_info.num_uniform_buffers = 1;
     create_info.threadcount_x = mandel_workgroup_size;
     create_info.threadcount_y = mandel_workgroup_size;
@@ -217,6 +221,9 @@ GpuMandelParams make_gpu_mandel_params(const core::MandelParams &params)
     gpu_params.constants[1] = static_cast<float>(params.z0_imag);
     gpu_params.constants[2] = static_cast<float>(params.bailout);
     gpu_params.constants[3] = static_cast<float>(params.close_enough);
+    gpu_params.potential[0] = potential_height_bailout;
+    gpu_params.potential[1] = potential_height_scale;
+    gpu_params.potential[2] = potential_height_log_scale;
     gpu_params.image[0] = params.width;
     gpu_params.image[1] = params.height;
     gpu_params.image[2] = params.max_iterations;
@@ -323,7 +330,7 @@ std::array<float, 16> make_height_world_to_clip(float yaw_radians, float pitch_r
 }
 
 GpuHeightParams make_gpu_height_params(
-    const core::MandelParams &params, const wxSize &size, float yaw_radians, float pitch_radians, float distance)
+    const wxSize &size, float yaw_radians, float pitch_radians, float distance, float height_value_max)
 {
     const auto grid_size = make_height_grid_size(size);
     const auto world_to_clip = make_height_world_to_clip(yaw_radians, pitch_radians, distance, size);
@@ -334,7 +341,7 @@ GpuHeightParams make_gpu_height_params(
     gpu_params.texture_size[1] = static_cast<Uint32>(std::max(size.GetHeight(), 1));
     gpu_params.grid_size[0] = grid_size.width;
     gpu_params.grid_size[1] = grid_size.height;
-    gpu_params.max_iterations = static_cast<float>(params.max_iterations);
+    gpu_params.height_value_max = height_value_max;
     gpu_params.height_scale = height_scale;
     return gpu_params;
 }
@@ -554,6 +561,7 @@ void MandelRenderHost::EnsureGpuTexture(const wxSize &size)
     }
 
     m_iterationTexture = make_iteration_texture(m_gpuDevice, size);
+    m_potentialTexture = make_iteration_texture(m_gpuDevice, size);
     m_gpuTextureSize = size;
     m_gpuDirty = true;
 }
@@ -646,33 +654,36 @@ void MandelRenderHost::RenderGpuImage(sdlcpp::GpuCommandBuffer &command_buffer, 
     const auto gpu_params = make_gpu_mandel_params(params);
     command_buffer.PushGPUComputeUniformData(0, &gpu_params, sizeof(gpu_params));
 
-    const SDL_GPUStorageTextureReadWriteBinding output_texture{m_iterationTexture.get(), 0, 0, true, 0, 0, 0};
-    auto compute_pass = command_buffer.BeginGPUComputePass(&output_texture, 1);
+    const std::array output_textures{
+        SDL_GPUStorageTextureReadWriteBinding{m_iterationTexture.get(), 0, 0, true, 0, 0, 0},
+        SDL_GPUStorageTextureReadWriteBinding{m_potentialTexture.get(), 0, 0, true, 0, 0, 0}};
+    auto compute_pass =
+        command_buffer.BeginGPUComputePass(output_textures.data(), static_cast<Uint32>(output_textures.size()));
     compute_pass.BindGPUComputePipeline(m_mandelComputePipeline);
     compute_pass.DispatchGPUCompute(ceil_div(static_cast<Uint32>(size.GetWidth()), mandel_workgroup_size),
         ceil_div(static_cast<Uint32>(size.GetHeight()), mandel_workgroup_size), 1);
     m_gpuDirty = false;
 }
 
-void MandelRenderHost::RenderHeightField(
-    sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass, const wxSize &size)
+void MandelRenderHost::RenderHeightField(sdlcpp::GpuCommandBuffer &command_buffer, sdlcpp::GpuRenderPass &render_pass,
+    const wxSize &size, sdlcpp::GpuTexture &height_texture, float height_value_max)
 {
     const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
     const auto height_params =
-        make_gpu_height_params(params, size, m_heightYawRadians, m_heightPitchRadians, m_heightDistance);
+        make_gpu_height_params(size, m_heightYawRadians, m_heightPitchRadians, m_heightDistance, height_value_max);
     const auto blit_params = make_gpu_blit_params(params, m_palette);
     const auto grid_size = make_height_grid_size(size);
 
     command_buffer.PushGPUVertexUniformData(0, &height_params, sizeof(height_params));
     command_buffer.PushGPUFragmentUniformData(0, &blit_params, sizeof(blit_params));
     render_pass.BindGPUGraphicsPipeline(m_heightPipeline);
-    render_pass.BindGPUVertexStorageTextures(0, m_iterationTexture);
+    render_pass.BindGPUVertexStorageTextures(0, height_texture);
     render_pass.BindGPUFragmentStorageTextures(0, m_iterationTexture);
     render_pass.BindGPUFragmentStorageBuffers(0, m_paletteBuffer);
     render_pass.DrawGPUPrimitives(height_field_vertex_count(grid_size), 1, 0, 0);
 }
 
-void MandelRenderHost::RenderHeightFieldFrame()
+void MandelRenderHost::RenderHeightFieldFrame(bool use_potential_height)
 {
     const wxSize size = m_canvas.GetClientSize();
     if (size.GetWidth() <= 0 || size.GetHeight() <= 0)
@@ -694,7 +705,16 @@ void MandelRenderHost::RenderHeightFieldFrame()
         const SDL_GPUDepthStencilTargetInfo depth_info{m_heightDepthTexture.get(), 1.0f, SDL_GPU_LOADOP_CLEAR,
             SDL_GPU_STOREOP_DONT_CARE, SDL_GPU_LOADOP_DONT_CARE, SDL_GPU_STOREOP_DONT_CARE, true, 0, 0, 0};
         auto render_pass = command_buffer.BeginGPURenderPass(&target_info, 1, &depth_info);
-        RenderHeightField(command_buffer, render_pass, size);
+        if (use_potential_height)
+        {
+            RenderHeightField(command_buffer, render_pass, size, m_potentialTexture, 1.0f);
+        }
+        else
+        {
+            const auto params = m_viewport.params(size.GetWidth(), size.GetHeight());
+            RenderHeightField(
+                command_buffer, render_pass, size, m_iterationTexture, static_cast<float>(params.max_iterations));
+        }
     }
 
     command_buffer.SubmitGPUCommandBuffer();
@@ -770,12 +790,24 @@ void MandelRenderHost::SelectHeightFieldPresentation()
     RefreshActiveDisplay();
 }
 
+void MandelRenderHost::SelectPotentialFieldPresentation()
+{
+    ReleaseMouse();
+    m_presentation = Presentation::PotentialField;
+    ApplyPresentationVisibility();
+    RefreshActiveDisplay();
+}
+
 void MandelRenderHost::OnCanvasPaint(wxPaintEvent &)
 {
     wxPaintDC paint{&m_canvas};
     if (m_presentation == Presentation::HeightField)
     {
-        RenderHeightFieldFrame();
+        RenderHeightFieldFrame(false);
+    }
+    else if (m_presentation == Presentation::PotentialField)
+    {
+        RenderHeightFieldFrame(true);
     }
     else if (m_presentation == Presentation::Gpu)
     {
@@ -840,7 +872,7 @@ void MandelRenderHost::OnMouseMove(wxMouseEvent &event)
         return;
     }
 
-    if (m_presentation == Presentation::HeightField)
+    if (m_presentation == Presentation::HeightField || m_presentation == Presentation::PotentialField)
     {
         m_heightYawRadians += static_cast<float>(delta_x) * height_orbit_radians_per_pixel;
         m_heightPitchRadians =
@@ -867,7 +899,7 @@ void MandelRenderHost::OnMouseWheel(wxMouseEvent &event)
     const double clicks = static_cast<double>(event.GetWheelRotation()) / static_cast<double>(event.GetWheelDelta());
     const double scale = std::pow(zoom_scale_per_wheel_click, clicks);
 
-    if (m_presentation == Presentation::HeightField)
+    if (m_presentation == Presentation::HeightField || m_presentation == Presentation::PotentialField)
     {
         m_heightDistance =
             std::clamp(m_heightDistance * static_cast<float>(scale), min_height_distance, max_height_distance);
