@@ -2,7 +2,7 @@
 
 # SDL3 Example
 
-Sample code for the video Modern GPU Programming with SDL3
+Sample code for the video [Modern GPU Programming with SDL3](https://www.youtube.com/watch?v=rnbA-0kQ4eM).
 
 See also:
 * [GPU category](https://wiki.libsdl.org/SDL3/CategoryGPU) in the SDL3 documentation
