@@ -44,9 +44,5 @@ misc_group_sources("Git" FILES
 misc_group_sources("GitHub" FILES
     ".github/workflows/cmake.yml")
 misc_group_sources("VcPkg" FILES
-    "vcpkg-overlay-ports/directx-dxc/directx-dxc-config.cmake.in"
-    "vcpkg-overlay-ports/directx-dxc/portfile.cmake"
-    "vcpkg-overlay-ports/directx-dxc/usage"
-    "vcpkg-overlay-ports/directx-dxc/vcpkg.json"
     "vcpkg-configuration.json"
     "vcpkg.json")
